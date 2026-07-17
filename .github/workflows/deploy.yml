@@ -34,8 +34,6 @@ jobs:
   build-and-push:
     needs: set-env
     runs-on: ubuntu-latest
-    # "environment" injecte automatiquement les secrets propres à cette branche
-    # (IMAGE_TAG, DOCKERHUB_*, DB_*, JWT_*, MAIL_*, etc.)
     environment: ${{ needs.set-env.outputs.gh_environment }}
     steps:
       - name: Checkout du code
@@ -60,8 +58,6 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          # Le tag dépend de l'environnement (dev / preprod / latest),
-          # défini dans le secret IMAGE_TAG propre à chaque branche
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/tnb-sms-gateway:${{ secrets.IMAGE_TAG }}
 
   # ============================================================
@@ -70,15 +66,29 @@ jobs:
   # ============================================================
   deploy:
     runs-on: ubuntu-latest
-    needs: [set-env, build-and-push] # attend que l'image soit poussée avant de déployer
+    needs: [set-env, build-and-push]
     environment: ${{ needs.set-env.outputs.gh_environment }}
-    # Empêche deux déploiements simultanés sur le même environnement
     concurrency:
       group: deploy-${{ needs.set-env.outputs.gh_environment }}
       cancel-in-progress: false
     steps:
       - name: Checkout du code
         uses: actions/checkout@v4
+
+      - name: Debug clé SSH (sans fuite du contenu)
+        run: |
+          echo "Longueur du secret (en octets) :"
+          echo -n "${{ secrets.SERVER_SSH_KEY }}" | wc -c
+          echo "Empreinte SHA256 du secret :"
+          echo -n "${{ secrets.SERVER_SSH_KEY }}" | sha256sum
+          echo "Première ligne (doit être -----BEGIN...) :"
+          echo "${{ secrets.SERVER_SSH_KEY }}" | head -n 1
+          echo "Dernière ligne (doit être -----END...) :"
+          echo "${{ secrets.SERVER_SSH_KEY }}" | tail -n 1
+          echo "Valeur de SERVER_HOST :"
+          echo "${{ secrets.SERVER_HOST }}"
+          echo "Valeur de SERVER_USER :"
+          echo "${{ secrets.SERVER_USER }}"
 
       - name: Copie du docker-compose.yml sur le serveur
         uses: appleboy/scp-action@v0.1.7
@@ -96,14 +106,9 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            # Créer le dossier de l'environnement s'il n'existe pas encore
             mkdir -p /opt/sms-gateway/${{ needs.set-env.outputs.gh_environment }}/logs
-
-            # Se déplacer dans le dossier de déploiement propre à cet environnement
             cd /opt/sms-gateway/${{ needs.set-env.outputs.gh_environment }}
 
-            # Génère le .env à chaque déploiement à partir des secrets GitHub
-            # (jamais commité sur Git, régénéré à chaque push)
             cat > .env <<EOF
             CONTAINER_NAME=${{ secrets.CONTAINER_NAME }}
             IMAGE_TAG=${{ secrets.IMAGE_TAG }}
@@ -123,13 +128,8 @@ jobs:
             EOF
             chmod 600 .env
 
-            # Récupère la dernière image mise à jour depuis Docker Hub
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/tnb-sms-gateway:${{ secrets.IMAGE_TAG }}
-
-            # Relance le conteneur en appliquant les changements
             docker compose --env-file .env up -d --remove-orphans
-
-            # Nettoie l'espace disque en supprimant les anciennes images obsolètes
             docker image prune -f
 
       - name: Vérification du déploiement (healthcheck)
