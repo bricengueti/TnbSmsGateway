@@ -1,4 +1,5 @@
 package TNB.SmsGateway.service;
+
 import TNB.SmsGateway.entity.Device;
 import TNB.SmsGateway.entity.DeviceSim;
 import TNB.SmsGateway.entity.Operator;
@@ -26,6 +27,13 @@ public class DeviceSimService {
     }
 
     /**
+     * Récupérer toutes les SIMs d'un device
+     */
+    public List<DeviceSim> getSimsByDevice(Device device) {
+        return deviceSimRepository.findByDevice(device);
+    }
+
+    /**
      * Mettre à jour une SIM
      * Scénario: L'utilisateur modifie les paramètres d'une SIM
      */
@@ -42,7 +50,7 @@ public class DeviceSimService {
         }
 
         // 3. Mettre à jour l'opérateur
-        if (operatorCode != null) {
+        if (operatorCode != null && !operatorCode.isEmpty()) {
             Operator operator = referenceService.findOperatorByCode(operatorCode)
                     .orElseThrow(() -> new BusinessException("Opérateur non trouvé", "OPERATOR_NOT_FOUND", 404));
 
