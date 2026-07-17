@@ -10,8 +10,5 @@ public class WebhookDeliveryException extends BusinessException {
                 " (tentative " + attempt + ")", "WEBHOOK_DELIVERY_FAILED", 500);
     }
 
-    public static WebhookDeliveryException maxAttemptsReached(UUID messageId) {
-        return new WebhookDeliveryException("Nombre max de tentatives atteint pour le message " + messageId,
-                "WEBHOOK_MAX_ATTEMPTS", 500);
-    }
+
 }

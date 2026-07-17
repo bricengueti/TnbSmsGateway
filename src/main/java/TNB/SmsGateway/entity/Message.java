@@ -81,18 +81,7 @@ public class Message extends BaseAudit {
         super();
     }
 
-    public Message(User user, String toNumber, String body, String countryCode, String operatorCode) {
-        this();
-        this.user = user;
-        this.toNumber = toNumber;
-        this.body = body;
-        this.countryCode = countryCode;
-        this.operatorCode = operatorCode;
-        this.direction = MessageDirection.OUTBOUND;
-        this.status = MessageStatus.PENDING;
-        this.priority = MessagePriority.NORMAL;
-        this.attempts = 0;
-    }
+
 
     public Message(User user, String fromNumber, String body, String countryCode, String operatorCode) {
         this();

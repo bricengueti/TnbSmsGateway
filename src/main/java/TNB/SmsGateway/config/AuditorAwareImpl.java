@@ -1,4 +1,5 @@
 package TNB.SmsGateway.config;
+import TNB.SmsGateway.security.ApiKeyAuthentication;
 import TNB.SmsGateway.security.JwtAuthentication;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.security.core.Authentication;
