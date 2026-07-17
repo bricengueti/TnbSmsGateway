@@ -1,6 +1,7 @@
 package TNB.SmsGateway.entity;
 
 import jakarta.persistence.*;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "users", uniqueConstraints = {
@@ -23,9 +24,15 @@ public class User extends BaseAudit {
     @Column(name = "webhook_secret", length = 255)
     private String webhookSecret;
 
+    // 🔥 AJOUTER CE CHAMP
+    @Column(name = "first_login")
+    private Boolean firstLogin = true;
+
+    // Constructeurs
     public User() {
         super();
         this.webhookSecret = java.util.UUID.randomUUID().toString();
+        this.firstLogin = true;
     }
 
     public User(String email) {
@@ -33,7 +40,7 @@ public class User extends BaseAudit {
         this.email = email;
     }
 
-    // Getters and Setters
+    // Getters & Setters
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
 
@@ -48,4 +55,12 @@ public class User extends BaseAudit {
 
     public String getWebhookSecret() { return webhookSecret; }
     public void setWebhookSecret(String webhookSecret) { this.webhookSecret = webhookSecret; }
+
+    public Boolean getFirstLogin() { return firstLogin; }
+    public void setFirstLogin(Boolean firstLogin) { this.firstLogin = firstLogin; }
+
+    // 🔥 Méthode pour marquer le premier login
+    public void markFirstLoginDone() {
+        this.firstLogin = false;
+    }
 }

@@ -8,6 +8,7 @@ import TNB.SmsGateway.exception.BusinessException;
 import TNB.SmsGateway.exception.message.OperatorCountryMismatchException;
 import TNB.SmsGateway.repository.MessageRepository;
 import TNB.SmsGateway.websocket.handler.DeviceWebSocketHandler;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -46,7 +47,7 @@ public class MessageService {
                           MessageRouterService messageRouter,
                           ReferenceService referenceService,
                           UserService userService,
-                          DeviceWebSocketHandler webSocketHandler) {
+                          @Lazy DeviceWebSocketHandler webSocketHandler) {
         this.messageRepository = messageRepository;
         this.messageRouter = messageRouter;
         this.referenceService = referenceService;

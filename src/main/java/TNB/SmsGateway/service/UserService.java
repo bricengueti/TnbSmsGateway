@@ -182,4 +182,9 @@ public class UserService {
         User user = findByIdOrThrow(userId);
         return user.getWebhookUrl() != null && !user.getWebhookUrl().isEmpty();
     }
+
+    @Transactional
+    public User save(User user) {
+        return userRepository.save(user);
+    }
 }

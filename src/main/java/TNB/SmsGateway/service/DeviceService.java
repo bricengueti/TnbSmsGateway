@@ -1,6 +1,5 @@
 package TNB.SmsGateway.service;
 
-
 import TNB.SmsGateway.dto.request.DeviceRegisterRequest;
 import TNB.SmsGateway.dto.request.DeviceUpdateRequest;
 import TNB.SmsGateway.dto.response.DeviceResponse;
@@ -12,6 +11,8 @@ import TNB.SmsGateway.entity.User;
 import TNB.SmsGateway.exception.BusinessException;
 import TNB.SmsGateway.repository.DeviceRepository;
 import TNB.SmsGateway.utils.RandomUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +41,7 @@ import java.util.stream.Collectors;
 @Service
 public class DeviceService {
 
+    private static final Logger log = LoggerFactory.getLogger(DeviceService.class);
     private static final int PAIRING_CODE_EXPIRY_MINUTES = 15;
 
     private final DeviceRepository deviceRepository;
@@ -87,6 +89,9 @@ public class DeviceService {
 
         deviceRepository.save(device);
 
+        // 🔥 LOG pour voir le pairingCode dans les logs
+        log.info("🔑 Pairing code pour device {}: {}", device.getId(), pairingCode);
+
         return new DeviceResponse(
                 device.getId().toString(),
                 device.getLabel(),
@@ -95,7 +100,8 @@ public class DeviceService {
                 device.getStatus().name(),
                 device.getPairedAt(),
                 device.getLastHeartbeatAt(),
-                List.of()
+                List.of(),
+                pairingCode  // 🔥 AJOUT DU PAIRING CODE DANS LA RÉPONSE
         );
     }
 
@@ -235,7 +241,8 @@ public class DeviceService {
                 device.getStatus().name(),
                 device.getPairedAt(),
                 device.getLastHeartbeatAt(),
-                sims
+                sims,
+                device.getPairingCode()  // 🔥 PAIRING CODE DANS LA RÉPONSE
         );
     }
 }

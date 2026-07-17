@@ -6,6 +6,7 @@ import TNB.SmsGateway.dto.request.DeviceUpdateRequest;
 import TNB.SmsGateway.dto.response.DevicePairResponse;
 import TNB.SmsGateway.dto.response.DeviceResponse;
 import TNB.SmsGateway.dto.common.ApiResponse;
+import TNB.SmsGateway.security.UserPrincipal;
 import TNB.SmsGateway.service.DevicePairingService;
 import TNB.SmsGateway.service.DeviceService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,19 +23,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * CONTROLLER: DeviceController
- *
- * DESCRIPTION: Gère les devices Android (SMS gateways)
- * URL de base: /api/v1/devices (context-path=/api)
- *
- * SCÉNARIOS:
- * 1. L'utilisateur enregistre un device → génère un code de pairing
- * 2. L'app mobile soumet le code de pairing
- * 3. L'utilisateur liste ses devices
- * 4. L'utilisateur modifie un device
- * 5. L'utilisateur supprime un device
- */
 @RestController
 @RequestMapping("/v1/devices")
 @Tag(name = "Devices", description = "Gestion des devices Android (SMS gateways)")
@@ -52,17 +40,6 @@ public class DeviceController {
     // ===== ENREGISTREMENT (Dashboard) =====
     // =============================================
 
-    /**
-     * SCÉNARIO: L'utilisateur enregistre un device
-     *
-     * URL: POST /api/v1/devices/register
-     * Auth: JWT
-     *
-     * RÉPONSES:
-     * - 201: Device créé avec code de pairing
-     * - 404: Pays non trouvé
-     * - 401: Token invalide
-     */
     @Operation(
             summary = "Enregistrer un device",
             description = "Crée un nouveau device et génère un code de pairing à 6 chiffres valable 15 minutes."
@@ -88,7 +65,8 @@ public class DeviceController {
             @Valid @RequestBody DeviceRegisterRequest request,
             Authentication authentication
     ) {
-        UUID userId = (UUID) authentication.getPrincipal();
+        // 🔥 Récupérer l'ID correctement
+        UUID userId = getUserIdFromAuthentication(authentication);
         DeviceResponse response = deviceService.registerDevice(userId, request);
         return ResponseEntity.status(201).body(response);
     }
@@ -97,19 +75,9 @@ public class DeviceController {
     // ===== PAIRING (App mobile) =====
     // =============================================
 
-    /**
-     * SCÉNARIO: L'app mobile soumet le code de pairing
-     *
-     * URL: POST /api/v1/devices/pair
-     * Auth: Aucune (code de pairing)
-     *
-     * RÉPONSES:
-     * - 200: Pairing réussi → secretToken
-     * - 400: Code invalide ou expiré
-     */
     @Operation(
             summary = "Pairing d'un device",
-            description = "L'app mobile soumet le code de pairing pour finaliser l'enregistrement. Retourne un secretToken pour la connexion WebSocket."
+            description = "L'app mobile soumet le code de pairing pour finaliser l'enregistrement."
     )
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -134,16 +102,6 @@ public class DeviceController {
     // ===== LISTE DES DEVICES =====
     // =============================================
 
-    /**
-     * SCÉNARIO: L'utilisateur liste ses devices
-     *
-     * URL: GET /api/v1/devices
-     * Auth: JWT ou ApiKey
-     *
-     * RÉPONSES:
-     * - 200: Liste des devices
-     * - 401: Token invalide
-     */
     @Operation(
             summary = "Lister les devices",
             description = "Retourne la liste de tous les devices de l'utilisateur avec leurs SIMs."
@@ -162,7 +120,7 @@ public class DeviceController {
     @SecurityRequirement(name = "ApiKeyAuth")
     @GetMapping
     public ResponseEntity<List<DeviceResponse>> listDevices(Authentication authentication) {
-        UUID userId = (UUID) authentication.getPrincipal();
+        UUID userId = getUserIdFromAuthentication(authentication);
         List<DeviceResponse> devices = deviceService.listDevices(userId);
         return ResponseEntity.ok(devices);
     }
@@ -171,12 +129,6 @@ public class DeviceController {
     // ===== DÉTAIL D'UN DEVICE =====
     // =============================================
 
-    /**
-     * SCÉNARIO: L'utilisateur consulte les détails d'un device
-     *
-     * URL: GET /api/v1/devices/{id}
-     * Auth: JWT ou ApiKey
-     */
     @Operation(
             summary = "Détail d'un device",
             description = "Retourne les détails d'un device spécifique avec ses SIMs."
@@ -202,7 +154,7 @@ public class DeviceController {
             @PathVariable UUID id,
             Authentication authentication
     ) {
-        UUID userId = (UUID) authentication.getPrincipal();
+        UUID userId = getUserIdFromAuthentication(authentication);
         DeviceResponse response = deviceService.getDevice(userId, id);
         return ResponseEntity.ok(response);
     }
@@ -211,12 +163,6 @@ public class DeviceController {
     // ===== MISE À JOUR =====
     // =============================================
 
-    /**
-     * SCÉNARIO: L'utilisateur modifie un device
-     *
-     * URL: PATCH /api/v1/devices/{id}
-     * Auth: JWT
-     */
     @Operation(
             summary = "Modifier un device",
             description = "Met à jour le label ou le pays d'un device."
@@ -242,7 +188,7 @@ public class DeviceController {
             @Valid @RequestBody DeviceUpdateRequest request,
             Authentication authentication
     ) {
-        UUID userId = (UUID) authentication.getPrincipal();
+        UUID userId = getUserIdFromAuthentication(authentication);
         DeviceResponse response = deviceService.updateDevice(userId, id, request);
         return ResponseEntity.ok(response);
     }
@@ -251,15 +197,9 @@ public class DeviceController {
     // ===== SUPPRESSION =====
     // =============================================
 
-    /**
-     * SCÉNARIO: L'utilisateur supprime un device
-     *
-     * URL: DELETE /api/v1/devices/{id}
-     * Auth: JWT
-     */
     @Operation(
             summary = "Supprimer un device",
-            description = "Supprime un device (soft delete). Les messages en cours seront réassignés ou échoueront."
+            description = "Supprime un device (soft delete)."
     )
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -281,8 +221,29 @@ public class DeviceController {
             @PathVariable UUID id,
             Authentication authentication
     ) {
-        UUID userId = (UUID) authentication.getPrincipal();
+        UUID userId = getUserIdFromAuthentication(authentication);
         deviceService.deleteDevice(userId, id);
         return ResponseEntity.ok(new ApiResponse("Device supprimé avec succès", true));
+    }
+
+    // =============================================
+    // ===== UTILITAIRE =====
+    // =============================================
+
+    /**
+     * Extraire l'ID utilisateur de l'authentification
+     */
+    private UUID getUserIdFromAuthentication(Authentication authentication) {
+        Object principal = authentication.getPrincipal();
+
+        if (principal instanceof UserPrincipal) {
+            return ((UserPrincipal) principal).getId();
+        }
+
+        if (principal instanceof UUID) {
+            return (UUID) principal;
+        }
+
+        throw new RuntimeException("Impossible d'extraire l'ID utilisateur");
     }
 }

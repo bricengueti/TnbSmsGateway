@@ -112,12 +112,18 @@ public class AuthService {
             throw new RuntimeException("Compte suspendu");
         }
 
+        // 🔥 Vérifier si c'est un nouveau compte AVANT de le modifier
+        boolean isNewAccount = user.getFirstLogin();
+
+        // 🔥 Si c'est le premier login, marquer comme fait
+        if (isNewAccount) {
+            user.setFirstLogin(false);
+            userService.save(user);  // ← Sauvegarder la modification
+        }
+
         // 4. Générer les tokens
         String accessToken = jwtUtils.generateAccessToken(user.getId(), user.getEmail());
         String refreshToken = jwtUtils.generateRefreshToken(user.getId(), user.getEmail());
-
-        // 5. Vérifier si c'est un nouveau compte
-        boolean isNewAccount = user.getCreatedAt().equals(user.getUpdatedAt());
 
         return new AuthResponse(accessToken, refreshToken, isNewAccount);
     }

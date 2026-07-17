@@ -1,6 +1,6 @@
 package TNB.SmsGateway.config;
-import TNB.SmsGateway.security.ApiKeyAuthentication;
-import TNB.SmsGateway.security.JwtAuthentication;
+
+import TNB.SmsGateway.security.UserPrincipal;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,20 +20,15 @@ public class AuditorAwareImpl implements AuditorAware<UUID> {
             return Optional.empty();
         }
 
-        // JWT Authentication (Dashboard)
-        if (authentication instanceof JwtAuthentication) {
-            JwtAuthentication jwtAuth = (JwtAuthentication) authentication;
-            return Optional.of(jwtAuth.getUserId());
-        }
-
-        // ApiKey Authentication (Intégration)
-        if (authentication instanceof ApiKeyAuthentication) {
-            ApiKeyAuthentication apiKeyAuth = (ApiKeyAuthentication) authentication;
-            return Optional.of(apiKeyAuth.getUserId());
-        }
-
-        // Principal est directement l'UUID
         Object principal = authentication.getPrincipal();
+
+        // 🔥 Si c'est un UserPrincipal, récupérer l'ID
+        if (principal instanceof UserPrincipal) {
+            UserPrincipal userPrincipal = (UserPrincipal) principal;
+            return Optional.of(userPrincipal.getId());
+        }
+
+        // Si le principal est directement un UUID
         if (principal instanceof UUID) {
             return Optional.of((UUID) principal);
         }

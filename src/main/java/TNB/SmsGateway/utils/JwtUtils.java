@@ -19,7 +19,8 @@ public class JwtUtils {
     @Value("${jwt.secret}")
     private String secret;
 
-    @Value("${jwt.expiration}")
+
+    @Value("${jwt.expiration-ms:86400000}")
     private long expiration;
 
     @Value("${jwt.refresh-expiration:604800000}") // 7 jours par défaut

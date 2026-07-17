@@ -7,7 +7,6 @@ import java.util.List;
 @Table(name = "countries")
 public class Country extends BaseAudit {
 
-    @Id
     @Column(length = 2)
     private String code;
 

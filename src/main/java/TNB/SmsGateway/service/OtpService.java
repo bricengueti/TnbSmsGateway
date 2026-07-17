@@ -4,6 +4,8 @@ import TNB.SmsGateway.entity.OtpCode;
 import TNB.SmsGateway.repository.OtpCodeRepository;
 import TNB.SmsGateway.utils.RandomUtils;
 import TNB.SmsGateway.utils.SecurityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,8 @@ import java.util.Optional;
 @Service
 public class OtpService {
 
+
+    private static final Logger log = LoggerFactory.getLogger(OtpService.class);
     private static final int OTP_EXPIRY_SECONDS = 300; // 5 minutes
     private static final int MAX_ATTEMPTS = 5;
 
@@ -70,9 +74,12 @@ public class OtpService {
         otp.setAttempts(0);
 
         otpCodeRepository.save(otp);
-
+        // 🔥 AFFICHER L'OTP DANS LES LOGS (temporaire)
+        log.info("========================================");
+        log.info("🔐 OTP pour {} : {}", email, otpCode);
+        log.info("========================================");
         // 4. Envoyer l'email
-        sendOtpEmail(email, otpCode);
+//        sendOtpEmail(email, otpCode);
     }
 
     /**

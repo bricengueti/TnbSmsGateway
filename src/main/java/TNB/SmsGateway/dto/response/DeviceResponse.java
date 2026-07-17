@@ -29,5 +29,8 @@ public record DeviceResponse(
         Instant lastHeartbeatAt,
 
         @Schema(description = "Liste des SIMs")
-        List<DeviceSimResponse> sims
+        List<DeviceSimResponse> sims,
+
+        @Schema(description = "Code de pairing (valable 15 minutes)", example = "654321")
+        String pairingCode
 ) {}

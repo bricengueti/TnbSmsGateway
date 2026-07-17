@@ -9,6 +9,8 @@ import TNB.SmsGateway.exception.BusinessException;
 import TNB.SmsGateway.repository.ApiKeyRepository;
 import TNB.SmsGateway.utils.ApiKeyUtils;
 import TNB.SmsGateway.utils.SecurityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +35,8 @@ import java.util.stream.Collectors;
  */
 @Service
 public class ApiKeyService {
+
+    private static final Logger log = LoggerFactory.getLogger(CustomUserDetailsService.class);
 
     private final ApiKeyRepository apiKeyRepository;
     private final UserService userService;
@@ -60,14 +64,16 @@ public class ApiKeyService {
     public ApiKeyResponse createApiKey(UUID userId, ApiKeyRequest request) {
         User user = userService.findByIdOrThrow(userId);
 
-        // 1. Générer la clé
         String rawApiKey = ApiKeyUtils.generateApiKey();
-
-        // 2. Hasher pour stockage
         String hashedKey = SecurityUtils.hash(rawApiKey);
         String prefix = ApiKeyUtils.extractPrefix(rawApiKey);
 
-        // 3. Créer l'entité
+        // 🔥 LOG POUR VOIR CE QUI EST SAUVEGARDÉ
+        log.info("🔑 Création d'une clé API");
+        log.info("   - raw: {}", rawApiKey);
+        log.info("   - hash: {}", hashedKey);
+        log.info("   - prefix: {}", prefix);
+
         ApiKey apiKey = new ApiKey();
         apiKey.setUser(user);
         apiKey.setKeyHash(hashedKey);
@@ -75,19 +81,21 @@ public class ApiKeyService {
         apiKey.setScope(ApiKeyScope.valueOf(request.scope()));
         apiKey.setLabel(request.label());
 
-        apiKeyRepository.save(apiKey);
+        ApiKey saved = apiKeyRepository.save(apiKey);
 
-        // 4. Retourner la clé complète (UNE SEULE FOIS)
+        // 🔥 VÉRIFIER QUE L'ID N'EST PAS NULL
+        log.info("✅ Clé API enregistrée avec id: {}", saved.getId());
+        log.info("✅ Hash en base: {}", saved.getKeyHash());
+
         return new ApiKeyResponse(
-                apiKey.getId().toString(),
+                saved.getId().toString(),
                 rawApiKey,
                 prefix,
-                apiKey.getScope().name(),
-                apiKey.getLabel(),
-                apiKey.getCreatedAt()
+                saved.getScope().name(),
+                saved.getLabel(),
+                saved.getCreatedAt()
         );
     }
-
     /**
      * SCÉNARIO: Lister toutes les clés d'un utilisateur
      * La clé complète n'est plus visible → seulement le préfixe
