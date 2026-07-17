@@ -1,0 +1,138 @@
+name: CI/CD Pipeline - TnbSmsGateway Backend
+
+# Déclenchement : chaque branche pousse sur un environnement dédié.
+# develop -> dev | preprod -> preprod | main -> prod
+on:
+  push:
+    branches:
+      - develop
+      - preprod
+      - main
+
+jobs:
+
+  # ============================================================
+  # JOB 1 — Mappe la branche poussée vers l'environnement GitHub
+  # et vers le nom de dossier utilisé sur le serveur
+  # ============================================================
+  set-env:
+    runs-on: ubuntu-latest
+    outputs:
+      gh_environment: ${{ steps.map.outputs.gh_environment }}
+    steps:
+      - id: map
+        run: |
+          case "${{ github.ref_name }}" in
+            develop) echo "gh_environment=development" >> "$GITHUB_OUTPUT" ;;
+            preprod) echo "gh_environment=preprod" >> "$GITHUB_OUTPUT" ;;
+            main)    echo "gh_environment=production" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+  # ============================================================
+  # JOB 2 — Build l'image Docker et la pousse sur Docker Hub
+  # ============================================================
+  build-and-push:
+    needs: set-env
+    runs-on: ubuntu-latest
+    # "environment" injecte automatiquement les secrets propres à cette branche
+    # (IMAGE_TAG, DOCKERHUB_*, DB_*, JWT_*, MAIL_*, etc.)
+    environment: ${{ needs.set-env.outputs.gh_environment }}
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Configuration de Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Connexion à Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build et Push de l'image Docker
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          # Le tag dépend de l'environnement (dev / preprod / latest),
+          # défini dans le secret IMAGE_TAG propre à chaque branche
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/tnb-sms-gateway:${{ secrets.IMAGE_TAG }}
+
+  # ============================================================
+  # JOB 3 — Déploie sur le serveur via SSH, dans un dossier
+  # dédié à l'environnement (isolation totale dev/preprod/prod)
+  # ============================================================
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [set-env, build-and-push] # attend que l'image soit poussée avant de déployer
+    environment: ${{ needs.set-env.outputs.gh_environment }}
+    # Empêche deux déploiements simultanés sur le même environnement
+    concurrency:
+      group: deploy-${{ needs.set-env.outputs.gh_environment }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Copie du docker-compose.yml sur le serveur
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: "docker-compose.yml"
+          target: "/opt/sms-gateway/${{ needs.set-env.outputs.gh_environment }}/"
+
+      - name: Déploiement automatique sur le serveur via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            # Créer le dossier de l'environnement s'il n'existe pas encore
+            mkdir -p /opt/sms-gateway/${{ needs.set-env.outputs.gh_environment }}/logs
+
+            # Se déplacer dans le dossier de déploiement propre à cet environnement
+            cd /opt/sms-gateway/${{ needs.set-env.outputs.gh_environment }}
+
+            # Génère le .env à chaque déploiement à partir des secrets GitHub
+            # (jamais commité sur Git, régénéré à chaque push)
+            cat > .env <<EOF
+            CONTAINER_NAME=${{ secrets.CONTAINER_NAME }}
+            IMAGE_TAG=${{ secrets.IMAGE_TAG }}
+            SPRING_PROFILES_ACTIVE=${{ secrets.SPRING_PROFILES_ACTIVE }}
+            SERVER_PORT=${{ secrets.SERVER_PORT }}
+            DB_HOST=${{ secrets.DB_HOST }}
+            DB_PORT=${{ secrets.DB_PORT }}
+            DB_NAME=${{ secrets.DB_NAME }}
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            MAIL_HOST=${{ secrets.MAIL_HOST }}
+            MAIL_PORT=${{ secrets.MAIL_PORT }}
+            MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}
+            MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            JWT_EXPIRATION_MS=${{ secrets.JWT_EXPIRATION_MS }}
+            EOF
+            chmod 600 .env
+
+            # Récupère la dernière image mise à jour depuis Docker Hub
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/tnb-sms-gateway:${{ secrets.IMAGE_TAG }}
+
+            # Relance le conteneur en appliquant les changements
+            docker compose --env-file .env up -d --remove-orphans
+
+            # Nettoie l'espace disque en supprimant les anciennes images obsolètes
+            docker image prune -f
+
+      - name: Vérification du déploiement (healthcheck)
+        run: |
+          sleep 15
+          curl -f http://${{ secrets.SSH_HOST }}:${{ secrets.SERVER_PORT }}/api/actuator/health || exit 1
