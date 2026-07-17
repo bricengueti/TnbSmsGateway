@@ -83,18 +83,18 @@ jobs:
       - name: Copie du docker-compose.yml sur le serveur
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
           source: "docker-compose.yml"
           target: "/opt/sms-gateway/${{ needs.set-env.outputs.gh_environment }}/"
 
       - name: Déploiement automatique sur le serveur via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             # Créer le dossier de l'environnement s'il n'existe pas encore
             mkdir -p /opt/sms-gateway/${{ needs.set-env.outputs.gh_environment }}/logs
