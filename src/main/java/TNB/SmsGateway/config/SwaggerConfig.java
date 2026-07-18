@@ -7,8 +7,13 @@ import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.info.License;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
-import io.swagger.v3.oas.annotations.servers.Server;
+import io.swagger.v3.oas.models.servers.Server;
+import org.springdoc.core.customizers.OpenApiCustomizer;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import java.util.List;
 
 @Configuration
 @OpenAPIDefinition(
@@ -26,9 +31,6 @@ import org.springframework.context.annotation.Configuration;
                         url = "https://tnb.com/license"
                 )
         ),
-        servers = {
-                @Server(url = "http://localhost:8070/api", description = "Développement local")
-        },
         security = {
                 @SecurityRequirement(name = "BearerAuth"),
                 @SecurityRequirement(name = "ApiKeyAuth")
@@ -64,5 +66,27 @@ import org.springframework.context.annotation.Configuration;
                 """
 )
 public class SwaggerConfig {
-    // Aucun code nécessaire - tout est géré par les annotations
+
+    /**
+     * Construit dynamiquement l'URL du serveur affichée dans Swagger,
+     * à partir des properties/variables d'environnement de chaque profil
+     * (dev/preprod/prod), au lieu d'une valeur codée en dur.
+     *
+     * - app.public-host : IP ou domaine public (env APP_PUBLIC_HOST, défaut "localhost")
+     * - app.public-scheme : http ou https (env APP_PUBLIC_SCHEME, défaut "http")
+     * - server.port : déjà présent dans application.properties (${SERVER_PORT:8070})
+     * - server.servlet.context-path : déjà présent ("/api")
+     */
+    @Bean
+    public OpenApiCustomizer dynamicServerUrlCustomizer(
+            @Value("${app.public-scheme:http}") String scheme,
+            @Value("${app.public-host:localhost}") String host,
+            @Value("${server.port}") String port,
+            @Value("${server.servlet.context-path:}") String contextPath) {
+
+        return openApi -> {
+            String url = scheme + "://" + host + ":" + port + contextPath;
+            openApi.setServers(List.of(new Server().url(url)));
+        };
+    }
 }
