@@ -97,7 +97,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: "docker-compose.yml"
-          target: "/opt/sms-gateway/${{ needs.set-env.outputs.gh_environment }}/"
+          target: "/home/ubuntu/tnb-switch/${{ needs.set-env.outputs.gh_environment }}/"
 
       - name: Déploiement automatique sur le serveur via SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -106,8 +106,8 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            mkdir -p /opt/sms-gateway/${{ needs.set-env.outputs.gh_environment }}/logs
-            cd /opt/sms-gateway/${{ needs.set-env.outputs.gh_environment }}
+            mkdir -p /home/ubuntu/tnb-switch/${{ needs.set-env.outputs.gh_environment }}/logs
+            cd /home/ubuntu/tnb-switch/${{ needs.set-env.outputs.gh_environment }}
 
             cat > .env <<EOF
             CONTAINER_NAME=${{ secrets.CONTAINER_NAME }}
