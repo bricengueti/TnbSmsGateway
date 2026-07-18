@@ -134,5 +134,13 @@ jobs:
 
       - name: Vérification du déploiement (healthcheck)
         run: |
-          sleep 15
-          curl -f http://${{ secrets.SERVER_HOST }}:${{ secrets.SERVER_PORT }}/api/actuator/health || exit 1
+          for i in $(seq 1 20); do
+            if curl -sf http://${{ secrets.SERVER_HOST }}:${{ secrets.SERVER_PORT }}/api/actuator/health; then
+              echo "✅ Application prête"
+              exit 0
+            fi
+            echo "Tentative $i/20 — application pas encore prête, nouvel essai dans 10s..."
+            sleep 10
+          done
+          echo "❌ L'application n'a jamais répondu après 200s"
+          exit 1
