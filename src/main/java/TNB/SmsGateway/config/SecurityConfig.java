@@ -43,7 +43,6 @@ public class SecurityConfig {
                                 "/webjars/**",
                                 "/actuator/health"
                         ).permitAll()
-
                         // ===== JWT - Dashboard =====
                         .requestMatchers(
                                 "/v1/webhook/**",
