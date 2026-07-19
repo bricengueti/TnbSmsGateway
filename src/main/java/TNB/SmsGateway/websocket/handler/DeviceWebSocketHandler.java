@@ -193,9 +193,10 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
             log.info("Rapport SIMs reçu de device {}: {} SIMs", deviceId, report.sims().size());
 
             Device device = deviceService.findById(deviceId);
+            String countryCode = device.getCountry().getCode();
 
             for (DeviceSimReport.SimInfo simInfo : report.sims()) {
-                log.debug("Traitement SIM slot {}: opérateur {}, numéro {}, active: {}, quota: {}",
+                log.debug("Traitement SIM slot {}: opérateur brut '{}', numéro {}, active: {}, quota: {}",
                         simInfo.slotIndex(), simInfo.operatorCode(), simInfo.phoneNumber(),
                         simInfo.isActive(), simInfo.dailyQuota());
 
@@ -210,23 +211,23 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
                             return newSim;
                         });
 
-                // Résolution de l'opérateur — obligatoire en base (nullable = false),
-                // donc on ne peut sauvegarder que si on trouve une correspondance
-                // (ou si la SIM existait déjà avec un opérateur déjà défini)
+                // 🔥 Résolution par nom brut (ex: "Orange CM") + pays du device,
+                // au lieu d'un code exact. Évite l'échec "Opérateur inconnu 'Orange CM'".
                 if (simInfo.operatorCode() != null && !simInfo.operatorCode().isBlank()) {
-                    Optional<Operator> operator = referenceService.findOperatorByCode(simInfo.operatorCode());
+                    Optional<Operator> operator = referenceService.resolveOperatorFromRawName(
+                            simInfo.operatorCode(), countryCode);
                     if (operator.isPresent()) {
                         sim.setOperator(operator.get());
                     } else {
-                        log.warn("Opérateur inconnu '{}' pour device {} slot {}",
-                                simInfo.operatorCode(), deviceId, simInfo.slotIndex());
+                        log.warn("Aucun opérateur du pays {} ne correspond à '{}' pour device {} slot {}",
+                                countryCode, simInfo.operatorCode(), deviceId, simInfo.slotIndex());
                     }
                 }
 
                 if (sim.getOperator() == null) {
                     log.error("Impossible de sauvegarder la SIM slot {} pour device {}: aucun opérateur résolu",
                             simInfo.slotIndex(), deviceId);
-                    continue; // operator_code est NOT NULL en base, on ne peut pas save() sans lui
+                    continue;
                 }
 
                 sim.setPhoneNumber(simInfo.phoneNumber());

@@ -4,11 +4,11 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "operators", uniqueConstraints = {
-        @UniqueConstraint(columnNames = "code")
+        @UniqueConstraint(columnNames = {"code", "country_code"})
 })
 public class Operator extends BaseAudit {
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String code;
 
     @Column(name = "display_name", nullable = false)
@@ -29,7 +29,6 @@ public class Operator extends BaseAudit {
         this.country = country;
     }
 
-    // Getters and Setters
     public String getCode() { return code; }
     public void setCode(String code) { this.code = code; }
 

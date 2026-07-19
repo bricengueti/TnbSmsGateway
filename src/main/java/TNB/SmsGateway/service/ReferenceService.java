@@ -20,9 +20,8 @@ public class ReferenceService {
         this.operatorRepository = operatorRepository;
     }
 
-    // 🔥 Utiliser findByCode au lieu de findById
     public Optional<Country> findCountryByCode(String code) {
-        return countryRepository.findByCode(code);  // ✅ Méthode personnalisée
+        return countryRepository.findByCode(code);
     }
 
     public List<Country> findAllCountries() {
@@ -34,11 +33,20 @@ public class ReferenceService {
     }
 
     public boolean countryExists(String code) {
-        return countryRepository.existsByCode(code);  // ✅ Méthode personnalisée
+        return countryRepository.existsByCode(code);
     }
 
+    /**
+     * @deprecated Ambigu depuis les codes génériques par marque (ORANGE, MTN...).
+     * Utiliser findOperatorByCodeAndCountry.
+     */
+    @Deprecated
     public Optional<Operator> findOperatorByCode(String code) {
         return operatorRepository.findByCode(code);
+    }
+
+    public Optional<Operator> findOperatorByCodeAndCountry(String code, String countryCode) {
+        return operatorRepository.findByCodeAndCountryCode(code, countryCode);
     }
 
     public List<Operator> findOperatorsByCountry(String countryCode) {
@@ -51,5 +59,23 @@ public class ReferenceService {
 
     public Optional<Operator> findOperatorWithCountry(String code) {
         return operatorRepository.findByCodeWithCountry(code);
+    }
+
+    /**
+     * 🔥 Résolution à partir d'un nom d'opérateur brut (ex: "Orange CM", venant du
+     * carrierName Android), scopée au pays du device. On cherche le premier opérateur
+     * du pays dont le code générique (ORANGE, MTN...) apparaît comme sous-chaîne
+     * (insensible à la casse) dans le nom brut reçu.
+     */
+    public Optional<Operator> resolveOperatorFromRawName(String rawName, String countryCode) {
+        if (rawName == null || rawName.isBlank() || countryCode == null) {
+            return Optional.empty();
+        }
+        String normalized = rawName.trim().toUpperCase();
+        List<Operator> countryOperators = operatorRepository.findByCountryCode(countryCode);
+
+        return countryOperators.stream()
+                .filter(op -> normalized.contains(op.getCode().toUpperCase()))
+                .findFirst();
     }
 }
