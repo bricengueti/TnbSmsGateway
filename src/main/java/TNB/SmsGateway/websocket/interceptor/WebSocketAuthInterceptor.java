@@ -6,6 +6,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @Component
@@ -17,18 +19,18 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor {
                                    WebSocketHandler wsHandler,
                                    Map<String, Object> attributes) throws Exception {
 
-        // Récupérer le deviceId et secretToken de l'URL
-        // Exemple: ws://localhost:8080/ws/device?deviceId=xxx&secretToken=yyy
-        String query = request.getURI().getQuery();
+        String query = request.getURI().getRawQuery(); // raw pour ne pas double-décoder
         if (query != null) {
             String[] params = query.split("&");
             for (String param : params) {
-                String[] keyValue = param.split("=");
-                if (keyValue.length == 2) {
-                    if ("deviceId".equals(keyValue[0])) {
-                        attributes.put("deviceId", keyValue[1]);
-                    } else if ("secretToken".equals(keyValue[0])) {
-                        attributes.put("secretToken", keyValue[1]);
+                int idx = param.indexOf('='); // ⚠️ premier '=' seulement, pas split("=")
+                if (idx > 0) {
+                    String key = param.substring(0, idx);
+                    String value = URLDecoder.decode(param.substring(idx + 1), StandardCharsets.UTF_8);
+                    if ("deviceId".equals(key)) {
+                        attributes.put("deviceId", value);
+                    } else if ("secretToken".equals(key)) {
+                        attributes.put("secretToken", value);
                     }
                 }
             }
@@ -42,6 +44,5 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor {
                                ServerHttpResponse response,
                                WebSocketHandler wsHandler,
                                Exception exception) {
-        // Rien
     }
 }
