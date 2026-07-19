@@ -16,85 +16,73 @@ import java.util.UUID;
 @Repository
 public interface DeviceSimRepository extends JpaRepository<DeviceSim, UUID> {
 
-    /**
-     * Trouver toutes les SIMs d'un device
-     */
     List<DeviceSim> findByDevice(Device device);
 
-    /**
-     * Trouver toutes les SIMs d'un device par slot
-     */
     Optional<DeviceSim> findByDeviceAndSlotIndex(Device device, Integer slotIndex);
 
-    /**
-     * Trouver toutes les SIMs actives d'un device
-     */
     @Query("SELECT s FROM DeviceSim s WHERE s.device = :device AND s.isActive = true")
     List<DeviceSim> findActiveSims(@Param("device") Device device);
 
-    /**
-     * Trouver les SIMs avec quota restant
-     */
-    @Query("SELECT s FROM DeviceSim s WHERE s.device = :device AND s.isActive = true AND s.dailySmsSent < s.dailySmsQuota")
-    List<DeviceSim> findSimsWithQuota(@Param("device") Device device);
+    // 🔥 SUPPRIMÉ: findSimsWithQuota (JPQL ne peut plus comparer dailySmsSent < dailySmsQuota,
+    // ce dernier étant désormais un String pouvant valoir "ILLIMITE").
+    // Remplacé par filtrage Java ci-dessous, basé sur findActiveSims() + hasQuota().
 
     /**
-     * Mettre à jour l'activité d'une SIM
+     * Retourne les SIMs actives ayant encore du quota disponible
+     * (illimité OU dailySmsSent < quota numérique).
+     * Filtrage fait en Java car dailySmsQuota est un String ("ILLIMITE" possible).
      */
+    default List<DeviceSim> findSimsWithQuota(Device device) {
+        return findActiveSims(device).stream()
+                .filter(DeviceSim::hasQuota)
+                .toList();
+    }
+
     @Modifying
     @Transactional
     @Query("UPDATE DeviceSim s SET s.isActive = :active WHERE s.id = :simId")
     void updateActive(@Param("simId") UUID simId, @Param("active") Boolean active);
 
-    /**
-     * Incrémenter le compteur de SMS envoyés
-     */
     @Modifying
     @Transactional
     @Query("UPDATE DeviceSim s SET s.dailySmsSent = s.dailySmsSent + 1 WHERE s.id = :simId")
     void incrementDailySmsSent(@Param("simId") UUID simId);
 
-    /**
-     * Réinitialiser les compteurs quotidiens
-     */
     @Modifying
     @Transactional
     @Query("UPDATE DeviceSim s SET s.dailySmsSent = 0")
     void resetDailyCounters();
 
-    /**
-     * Réinitialiser les compteurs pour un device spécifique
-     */
     @Modifying
     @Transactional
     @Query("UPDATE DeviceSim s SET s.dailySmsSent = 0 WHERE s.device.id = :deviceId")
     void resetDailyCountersForDevice(@Param("deviceId") UUID deviceId);
 
-    /**
-     * Trouver les SIMs avec quota dépassé
-     */
-    @Query("SELECT s FROM DeviceSim s WHERE s.isActive = true AND s.dailySmsSent >= s.dailySmsQuota")
-    List<DeviceSim> findSimsWithQuotaExceeded();
+    // 🔥 SUPPRIMÉ: findSimsWithQuotaExceeded (même problème que findSimsWithQuota).
+    // Remplacé par un filtrage Java sur toutes les SIMs actives.
 
     /**
-     * Mettre à jour le quota d'une SIM
+     * Retourne les SIMs actives dont le quota est dépassé (jamais vrai si illimité).
+     * Filtrage fait en Java pour la même raison que findSimsWithQuota.
      */
+    default List<DeviceSim> findSimsWithQuotaExceeded() {
+        return findAll().stream()
+                .filter(sim -> Boolean.TRUE.equals(sim.getIsActive()))
+                .filter(sim -> !sim.hasQuota())
+                .toList();
+    }
+
+    // 🔥 CORRIGÉ: Integer → String, pour matcher le type réel du champ
     @Modifying
     @Transactional
     @Query("UPDATE DeviceSim s SET s.dailySmsQuota = :quota WHERE s.id = :simId")
-    void updateQuota(@Param("simId") UUID simId, @Param("quota") Integer quota);
+    void updateQuota(@Param("simId") UUID simId, @Param("quota") String quota);
 
-    /**
-     * Mettre à jour le numéro de téléphone
-     */
     @Modifying
     @Transactional
     @Query("UPDATE DeviceSim s SET s.phoneNumber = :phoneNumber WHERE s.id = :simId")
     void updatePhoneNumber(@Param("simId") UUID simId, @Param("phoneNumber") String phoneNumber);
 
-    /**
-     * Compter les SIMs actives par device
-     */
     @Query("SELECT s.device.id, COUNT(s) FROM DeviceSim s WHERE s.isActive = true GROUP BY s.device.id")
     List<Object[]> countActiveSimsByDevice();
 }

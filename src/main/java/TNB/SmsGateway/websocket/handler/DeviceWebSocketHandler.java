@@ -1,9 +1,12 @@
 package TNB.SmsGateway.websocket.handler;
 
 import TNB.SmsGateway.entity.Device;
+import TNB.SmsGateway.entity.DeviceSim;
 import TNB.SmsGateway.entity.DeviceStatus;
 import TNB.SmsGateway.entity.Message;
 import TNB.SmsGateway.entity.MessageStatus;
+import TNB.SmsGateway.entity.Operator;
+import TNB.SmsGateway.repository.DeviceSimRepository;
 import TNB.SmsGateway.service.*;
 import TNB.SmsGateway.websocket.WebSocketMessage;
 import TNB.SmsGateway.websocket.WebSocketMessageType;
@@ -20,25 +23,9 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
-/**
- * HANDLER: DeviceWebSocketHandler
- *
- * DESCRIPTION: Gère la communication WebSocket avec les devices Android
- * - Authentification du device via secretToken
- * - Réception des messages (heartbeat, status, SMS entrants)
- * - Envoi des commandes (dispatch SMS, requête SIM)
- * - Gestion des connexions/déconnexions
- *
- * SCÉNARIOS:
- * 1. Connexion: device se connecte avec deviceId + secretToken
- * 2. Heartbeat: device envoie un ping toutes les 30s
- * 3. Status: device confirme l'envoi d'un SMS (SENT/DELIVERED/FAILED)
- * 4. SMS entrant: device envoie un SMS reçu
- * 5. Dispatch: backend envoie une commande d'envoi de SMS
- * 6. Déconnexion: device se déconnecte → status OFFLINE
- */
 @Component
 public class DeviceWebSocketHandler extends TextWebSocketHandler {
 
@@ -49,18 +36,24 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
     private final DeviceStatusService deviceStatusService;
     private final IncomingMessageService incomingMessageService;
     private final MessageService messageService;
+    private final DeviceSimRepository deviceSimRepository;
+    private final ReferenceService referenceService;
     private final ObjectMapper objectMapper;
 
     public DeviceWebSocketHandler(DeviceSessionManager sessionManager,
                                   DeviceService deviceService,
                                   DeviceStatusService deviceStatusService,
                                   IncomingMessageService incomingMessageService,
-                                  MessageService messageService) {
+                                  MessageService messageService,
+                                  DeviceSimRepository deviceSimRepository,
+                                  ReferenceService referenceService) {
         this.sessionManager = sessionManager;
         this.deviceService = deviceService;
         this.deviceStatusService = deviceStatusService;
         this.incomingMessageService = incomingMessageService;
         this.messageService = messageService;
+        this.deviceSimRepository = deviceSimRepository;
+        this.referenceService = referenceService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -68,17 +61,6 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
     // ===== GESTION DES CONNEXIONS =====
     // =============================================
 
-    /**
-     * SCÉNARIO: Un device se connecte au WebSocket
-     * ÉTAPES:
-     * 1. Récupérer deviceId et secretToken depuis l'URL
-     * 2. Vérifier le secret token (comparaison BCrypt)
-     * 3. Enregistrer la session
-     * 4. Mettre à jour le status à ONLINE
-     * 5. Envoyer AUTH_SUCCESS
-     *
-     * @param session Session WebSocket
-     */
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         Map<String, Object> attributes = session.getAttributes();
@@ -93,7 +75,6 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
 
         UUID deviceId = UUID.fromString(deviceIdStr);
 
-        // Vérifier le secret token
         boolean isValid = verifySecretToken(deviceId, secretToken);
         if (!isValid) {
             log.warn("Authentification échouée pour device {}", deviceId);
@@ -106,13 +87,9 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        // Enregistrer la session
         sessionManager.registerSession(deviceId, session);
-
-        // Mettre à jour le status
         deviceStatusService.updateStatus(deviceId, DeviceStatus.ONLINE);
 
-        // Envoyer confirmation
         WebSocketMessage<AuthResponse> success = new WebSocketMessage<>(
                 WebSocketMessageType.AUTH_SUCCESS,
                 new AuthResponse(true, "Authentifié avec succès", deviceId.toString(), DeviceStatus.ONLINE.name())
@@ -122,16 +99,6 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
         log.info("Device {} connecté", deviceId);
     }
 
-    /**
-     * SCÉNARIO: Un device se déconnecte
-     * ÉTAPES:
-     * 1. Récupérer le deviceId
-     * 2. Marquer le device comme OFFLINE
-     * 3. Supprimer la session
-     *
-     * @param session Session WebSocket
-     * @param status Statut de fermeture
-     */
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         UUID deviceId = sessionManager.getDeviceIdBySession(session.getId());
@@ -143,12 +110,6 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    /**
-     * SCÉNARIO: Erreur de transport
-     *
-     * @param session Session WebSocket
-     * @param exception Exception
-     */
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {
         log.error("Erreur de transport pour session {}", session.getId(), exception);
@@ -166,22 +127,11 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
     // ===== TRAITEMENT DES MESSAGES =====
     // =============================================
 
-    /**
-     * SCÉNARIO: Le device envoie un message
-     * ÉTAPES:
-     * 1. Parser le message JSON
-     * 2. Identifier le type (HEARTBEAT, DEVICE_SIMS_REPORT, etc.)
-     * 3. Appeler le handler correspondant
-     *
-     * @param session Session WebSocket
-     * @param message Message reçu
-     */
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         String payload = message.getPayload();
         log.debug("Message reçu: {}", payload);
 
-        // Parser le message
         WebSocketMessage<Map<String, Object>> wsMessage = objectMapper.readValue(
                 payload,
                 WebSocketMessage.class
@@ -190,14 +140,12 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
         String type = wsMessage.getType();
         Map<String, Object> data = wsMessage.getPayload();
 
-        // Récupérer le deviceId
         UUID deviceId = sessionManager.getDeviceIdBySession(session.getId());
         if (deviceId == null) {
             session.close(CloseStatus.BAD_DATA);
             return;
         }
 
-        // Traiter selon le type
         WebSocketMessageType messageType = WebSocketMessageType.fromValue(type);
         if (messageType == null) {
             log.warn("Type de message inconnu: {}", type);
@@ -221,14 +169,6 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
     // ===== HANDLERS SPÉCIFIQUES =====
     // =============================================
 
-    /**
-     * SCÉNARIO: Le device envoie un heartbeat (toutes les 30s)
-     * ÉTAPES:
-     * 1. Mettre à jour le timestamp du heartbeat
-     * 2. Le device reste ONLINE
-     *
-     * @param deviceId ID du device
-     */
     private void handleHeartbeat(UUID deviceId) {
         deviceStatusService.updateHeartbeat(deviceId);
         log.debug("Heartbeat reçu de device {}", deviceId);
@@ -238,8 +178,9 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
      * SCÉNARIO: Le device envoie la liste des SIMs détectées
      * ÉTAPES:
      * 1. Parser le rapport des SIMs
-     * 2. Mettre à jour les SIMs du device
-     * 3. Activer/désactiver les SIMs selon la présence
+     * 2. Pour chaque SIM: résoudre l'opérateur, chercher si elle existe déjà (device + slotIndex)
+     * 3. Créer ou mettre à jour, avec le quota en String ("ILLIMITE" ou nombre)
+     * 4. Sauvegarder en base
      *
      * @param deviceId ID du device
      * @param data Données du rapport
@@ -251,27 +192,62 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
 
             log.info("Rapport SIMs reçu de device {}: {} SIMs", deviceId, report.sims().size());
 
-            // Traiter chaque SIM
-            for (DeviceSimReport.SimInfo sim : report.sims()) {
-                log.debug("SIM slot {}: opérateur {}, numéro {}, active: {}",
-                        sim.slotIndex(), sim.operatorCode(), sim.phoneNumber(), sim.isActive());
-                // Ici: mettre à jour les SIMs en base
+            Device device = deviceService.findById(deviceId);
+
+            for (DeviceSimReport.SimInfo simInfo : report.sims()) {
+                log.debug("Traitement SIM slot {}: opérateur {}, numéro {}, active: {}, quota: {}",
+                        simInfo.slotIndex(), simInfo.operatorCode(), simInfo.phoneNumber(),
+                        simInfo.isActive(), simInfo.dailyQuota());
+
+                DeviceSim sim = deviceSimRepository
+                        .findByDeviceAndSlotIndex(device, simInfo.slotIndex())
+                        .orElseGet(() -> {
+                            DeviceSim newSim = new DeviceSim();
+                            newSim.setDevice(device);
+                            newSim.setSlotIndex(simInfo.slotIndex());
+                            log.info("Nouvelle SIM créée pour device {} au slot {}",
+                                    deviceId, simInfo.slotIndex());
+                            return newSim;
+                        });
+
+                // Résolution de l'opérateur — obligatoire en base (nullable = false),
+                // donc on ne peut sauvegarder que si on trouve une correspondance
+                // (ou si la SIM existait déjà avec un opérateur déjà défini)
+                if (simInfo.operatorCode() != null && !simInfo.operatorCode().isBlank()) {
+                    Optional<Operator> operator = referenceService.findOperatorByCode(simInfo.operatorCode());
+                    if (operator.isPresent()) {
+                        sim.setOperator(operator.get());
+                    } else {
+                        log.warn("Opérateur inconnu '{}' pour device {} slot {}",
+                                simInfo.operatorCode(), deviceId, simInfo.slotIndex());
+                    }
+                }
+
+                if (sim.getOperator() == null) {
+                    log.error("Impossible de sauvegarder la SIM slot {} pour device {}: aucun opérateur résolu",
+                            simInfo.slotIndex(), deviceId);
+                    continue; // operator_code est NOT NULL en base, on ne peut pas save() sans lui
+                }
+
+                sim.setPhoneNumber(simInfo.phoneNumber());
+                sim.setIsActive(simInfo.isActive() != null ? simInfo.isActive() : true);
+
+                if (simInfo.dailyQuota() != null && !simInfo.dailyQuota().isBlank()) {
+                    sim.setDailySmsQuota(simInfo.dailyQuota());
+                }
+
+                deviceSimRepository.save(sim);
+                log.debug("SIM slot {} sauvegardée pour device {}", simInfo.slotIndex(), deviceId);
             }
+
+            log.info("Rapport SIMs traité avec succès pour device {}: {} SIMs persistées",
+                    deviceId, report.sims().size());
+
         } catch (Exception e) {
-            log.error("Erreur lors du traitement du rapport SIMs", e);
+            log.error("Erreur lors du traitement du rapport SIMs pour device {}", deviceId, e);
         }
     }
 
-    /**
-     * SCÉNARIO: Le device confirme le status d'un SMS
-     * ÉTAPES:
-     * 1. Parser le status (SENT, DELIVERED, FAILED)
-     * 2. Mettre à jour le message en base
-     * 3. Enregistrer la date de délivrance si DELIVERED
-     *
-     * @param deviceId ID du device
-     * @param data Données du status
-     */
     private void handleSmsStatusUpdate(UUID deviceId, Map<String, Object> data) {
         try {
             String json = objectMapper.writeValueAsString(data);
@@ -308,17 +284,6 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    /**
-     * SCÉNARIO: Le device a reçu un SMS entrant
-     * ÉTAPES:
-     * 1. Parser le SMS (from, body, simSlot)
-     * 2. Résoudre le client via device.owner
-     * 3. Créer le message INBOUND
-     * 4. Envoyer au webhook du client
-     *
-     * @param deviceId ID du device
-     * @param data Données du SMS
-     */
     private void handleIncomingSms(UUID deviceId, Map<String, Object> data) {
         try {
             String json = objectMapper.writeValueAsString(data);
@@ -327,7 +292,6 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
             log.info("SMS entrant de {} sur device {} (slot {})",
                     incoming.from(), deviceId, incoming.simSlot());
 
-            // Convertir en Map pour le service existant
             Map<String, Object> dataMap = Map.of(
                     "from", incoming.from(),
                     "body", incoming.body(),
@@ -346,13 +310,6 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
     // ===== ENVOI DE MESSAGES AUX DEVICES =====
     // =============================================
 
-    /**
-     * SCÉNARIO: Envoyer un message générique à un device
-     *
-     * @param deviceId ID du device
-     * @param type Type de message
-     * @param data Données du message
-     */
     public void sendToDevice(UUID deviceId, String type, Object data) {
         try {
             WebSocketMessage<Object> message = new WebSocketMessage<>(type, data);
@@ -363,37 +320,17 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    /**
-     * SCÉNARIO: Envoyer une commande d'envoi de SMS
-     * Utilisé par le MessageService après le routage
-     *
-     * @param deviceId ID du device
-     * @param messageId ID du message
-     * @param to Numéro de destination
-     * @param body Corps du message
-     */
     public void dispatchSms(UUID deviceId, String messageId, String to, String body) {
         DispatchMessage dispatch = new DispatchMessage(messageId, to, body);
         sendToDevice(deviceId, WebSocketMessageType.DISPATCH_SMS.getValue(), dispatch);
         log.info("Commande DISPATCH_SMS envoyée au device {} pour le message {}", deviceId, messageId);
     }
 
-    /**
-     * SCÉNARIO: Envoyer une requête de rapport SIM
-     *
-     * @param deviceId ID du device
-     */
     public void requestSimsReport(UUID deviceId) {
         sendToDevice(deviceId, WebSocketMessageType.REQUEST_SIMS_REPORT.getValue(), null);
         log.info("Requête REQUEST_SIMS_REPORT envoyée au device {}", deviceId);
     }
 
-    /**
-     * SCÉNARIO: Envoyer une erreur à un device
-     *
-     * @param session Session WebSocket
-     * @param message Message d'erreur
-     */
     private void sendError(WebSocketSession session, String message) {
         try {
             WebSocketMessage<String> error = new WebSocketMessage<>(
@@ -410,14 +347,6 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
     // ===== HELPERS =====
     // =============================================
 
-    /**
-     * Vérifier le secret token d'un device
-     * Utilise BCrypt pour la comparaison sécurisée
-     *
-     * @param deviceId ID du device
-     * @param secretToken Secret token fourni par l'app
-     * @return true si valide
-     */
     private boolean verifySecretToken(UUID deviceId, String secretToken) {
         try {
             Device device = deviceService.findById(deviceId);

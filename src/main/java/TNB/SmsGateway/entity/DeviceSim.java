@@ -6,6 +6,8 @@ import jakarta.persistence.*;
 @Table(name = "device_sims")
 public class DeviceSim extends BaseAudit {
 
+    public static final String QUOTA_UNLIMITED = "ILLIMITE";
+
     @ManyToOne
     @JoinColumn(name = "device_id", nullable = false)
     private Device device;
@@ -13,7 +15,6 @@ public class DeviceSim extends BaseAudit {
     @Column(name = "slot_index", nullable = false)
     private Integer slotIndex;
 
-    // ===== RELATION AVEC OPERATOR =====
     @ManyToOne
     @JoinColumn(name = "operator_code", nullable = false)
     private Operator operator;
@@ -27,10 +28,9 @@ public class DeviceSim extends BaseAudit {
     @Column(name = "daily_sms_sent")
     private Integer dailySmsSent = 0;
 
+    // 🔥 String au lieu d'Integer : "ILLIMITE" ou une valeur numérique ("100", "500", ...)
     @Column(name = "daily_sms_quota")
-    private Integer dailySmsQuota = 100;
-
-    // ===== CONSTRUCTEURS =====
+    private String dailySmsQuota = "100";
 
     public DeviceSim() {
         super();
@@ -42,8 +42,6 @@ public class DeviceSim extends BaseAudit {
         this.slotIndex = slotIndex;
         this.operator = operator;
     }
-
-    // ===== GETTERS & SETTERS =====
 
     public Device getDevice() { return device; }
     public void setDevice(Device device) { this.device = device; }
@@ -63,13 +61,33 @@ public class DeviceSim extends BaseAudit {
     public Integer getDailySmsSent() { return dailySmsSent; }
     public void setDailySmsSent(Integer dailySmsSent) { this.dailySmsSent = dailySmsSent; }
 
-    public Integer getDailySmsQuota() { return dailySmsQuota; }
-    public void setDailySmsQuota(Integer dailySmsQuota) { this.dailySmsQuota = dailySmsQuota; }
+    public String getDailySmsQuota() { return dailySmsQuota; }
+    public void setDailySmsQuota(String dailySmsQuota) { this.dailySmsQuota = dailySmsQuota; }
 
     // ===== MÉTHODES UTILITAIRES =====
 
+    public boolean isUnlimited() {
+        return QUOTA_UNLIMITED.equalsIgnoreCase(dailySmsQuota);
+    }
+
+    /**
+     * Retourne le quota numérique, ou null si illimité.
+     * @throws NumberFormatException si la valeur stockée n'est ni "ILLIMITE" ni un nombre valide
+     */
+    public Integer getNumericQuota() {
+        if (isUnlimited()) return null;
+        return Integer.parseInt(dailySmsQuota);
+    }
+
     public boolean hasQuota() {
-        return dailySmsSent < dailySmsQuota;
+        if (isUnlimited()) return true;
+        try {
+            int quota = Integer.parseInt(dailySmsQuota);
+            return dailySmsSent < quota;
+        } catch (NumberFormatException e) {
+            // Valeur corrompue en base : on bloque par sécurité plutôt que de laisser passer sans limite
+            return false;
+        }
     }
 
     public void incrementDailySmsSent() {

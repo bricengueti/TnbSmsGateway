@@ -26,35 +26,28 @@ public class DeviceSimService {
         this.referenceService = referenceService;
     }
 
-    /**
-     * Récupérer toutes les SIMs d'un device
-     */
     public List<DeviceSim> getSimsByDevice(Device device) {
         return deviceSimRepository.findByDevice(device);
     }
 
     /**
-     * Mettre à jour une SIM
-     * Scénario: L'utilisateur modifie les paramètres d'une SIM
+     * Mettre à jour une SIM.
+     * quota accepte soit un nombre en chaîne ("100"), soit "ILLIMITE" (insensible à la casse).
      */
     @Transactional
-    public DeviceSim updateSim(UUID userId, UUID simId, String operatorCode, Boolean isActive, Integer quota) {
-        // 1. Trouver la SIM
+    public DeviceSim updateSim(UUID userId, UUID simId, String operatorCode, Boolean isActive, String quota) {
         DeviceSim sim = deviceSimRepository.findById(simId)
                 .orElseThrow(() -> new BusinessException("SIM non trouvée", "SIM_NOT_FOUND", 404));
 
-        // 2. Vérifier que l'utilisateur est propriétaire du device
         Device device = sim.getDevice();
         if (!device.getUser().getId().equals(userId)) {
             throw new BusinessException("Accès non autorisé", "FORBIDDEN", 403);
         }
 
-        // 3. Mettre à jour l'opérateur
         if (operatorCode != null && !operatorCode.isEmpty()) {
             Operator operator = referenceService.findOperatorByCode(operatorCode)
                     .orElseThrow(() -> new BusinessException("Opérateur non trouvé", "OPERATOR_NOT_FOUND", 404));
 
-            // Vérifier que l'opérateur appartient au pays du device
             if (!operator.getCountry().getCode().equals(device.getCountry().getCode())) {
                 throw new BusinessException("L'opérateur n'appartient pas au pays du device",
                         "OPERATOR_COUNTRY_MISMATCH", 400);
@@ -62,23 +55,30 @@ public class DeviceSimService {
             sim.setOperator(operator);
         }
 
-        // 4. Mettre à jour l'activité
         if (isActive != null) {
             sim.setIsActive(isActive);
         }
 
-        // 5. Mettre à jour le quota
-        if (quota != null && quota > 0) {
-            sim.setDailySmsQuota(quota);
+        if (quota != null && !quota.isBlank()) {
+            if (DeviceSim.QUOTA_UNLIMITED.equalsIgnoreCase(quota)) {
+                sim.setDailySmsQuota(DeviceSim.QUOTA_UNLIMITED);
+            } else {
+                try {
+                    int parsed = Integer.parseInt(quota.trim());
+                    if (parsed <= 0) {
+                        throw new BusinessException("Le quota doit être positif", "INVALID_QUOTA", 400);
+                    }
+                    sim.setDailySmsQuota(String.valueOf(parsed));
+                } catch (NumberFormatException e) {
+                    throw new BusinessException(
+                            "Quota invalide, attendu un nombre ou \"ILLIMITE\"", "INVALID_QUOTA", 400);
+                }
+            }
         }
 
         return deviceSimRepository.save(sim);
     }
 
-    /**
-     * Réinitialiser les quotas quotidiens
-     * Scénario: Tâche planifiée à minuit
-     */
     @Transactional
     public void resetDailyCounters() {
         deviceSimRepository.resetDailyCounters();
