@@ -321,10 +321,10 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    public void dispatchSms(UUID deviceId, String messageId, String to, String body) {
-        DispatchMessage dispatch = new DispatchMessage(messageId, to, body);
+    public void dispatchSms(UUID deviceId, String slotIndex,String messageId, String to, String body) {
+        DispatchMessage dispatch = new DispatchMessage(messageId, slotIndex ,to, body);
         sendToDevice(deviceId, WebSocketMessageType.DISPATCH_SMS.getValue(), dispatch);
-        log.info("Commande DISPATCH_SMS envoyée au device {} pour le message {}", deviceId, messageId);
+        log.info("Commande DISPATCH_SMS envoyée au device {} pour le message {} au slot {} ", deviceId, messageId, slotIndex);
     }
 
     public void requestSimsReport(UUID deviceId) {

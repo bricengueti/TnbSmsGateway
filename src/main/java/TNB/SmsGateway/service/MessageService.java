@@ -129,6 +129,7 @@ public class MessageService {
         // 8. Envoyer la commande au device via WebSocket
         webSocketHandler.dispatchSms(
                 device.getId(),
+                message.getDeviceSim().getSlotIndex().toString(),
                 message.getId().toString(),
                 message.getToNumber(),
                 message.getBody()

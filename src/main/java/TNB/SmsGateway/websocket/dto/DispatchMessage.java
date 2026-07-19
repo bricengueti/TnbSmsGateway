@@ -6,6 +6,9 @@ public record DispatchMessage(
         @JsonProperty("messageId")
         String messageId,
 
+        @JsonProperty("SlotIndex")
+        String slotIndex,
+
         @JsonProperty("to")
         String to,
 
@@ -15,7 +18,9 @@ public record DispatchMessage(
         @JsonProperty("priority")
         String priority
 ) {
-    public DispatchMessage(String messageId, String to, String body) {
-        this(messageId, to, body, "NORMAL");
+    public DispatchMessage(String messageId, String slotIndex, String to, String body) {
+        this(messageId, slotIndex ,to, body, "NORMAL");
     }
+
+
 }
