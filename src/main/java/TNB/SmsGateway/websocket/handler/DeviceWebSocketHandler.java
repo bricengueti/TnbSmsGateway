@@ -216,17 +216,21 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
                         simInfo.slotIndex(), simInfo.operatorCode(), simInfo.phoneNumber(),
                         simInfo.isActive(), simInfo.dailyQuota());
 
-                DeviceSim sim = deviceSimRepository
-                        .findByDeviceAndSlotIndex(device, simInfo.slotIndex())
-                        .orElseGet(() -> {
-                            DeviceSim newSim = new DeviceSim();
-                            newSim.setDevice(device);
-                            newSim.setSlotIndex(simInfo.slotIndex());
-                            log.info("Nouvelle SIM créée pour device {} au slot {}",
-                                    deviceId, simInfo.slotIndex());
-                            return newSim;
-                        });
+                // 🔍 RECHERCHE STRICTE : On cherche par l'entité managée
+                Optional<DeviceSim> existingSimOpt = deviceSimRepository.findByDeviceAndSlotIndex(device, simInfo.slotIndex());
 
+                DeviceSim sim;
+                if (existingSimOpt.isPresent()) {
+                    sim = existingSimOpt.get();
+                    log.debug("SIM existante trouvée pour device {} au slot {}. Préparation de la mise à jour.", deviceId, simInfo.slotIndex());
+                } else {
+                    sim = new DeviceSim();
+                    sim.setDevice(device);
+                    sim.setSlotIndex(simInfo.slotIndex());
+                    log.info("Aucune SIM trouvée. Création d'une nouvelle ligne pour device {} au slot {}", deviceId, simInfo.slotIndex());
+                }
+
+                // Résolution de l'opérateur
                 if (simInfo.operatorCode() != null && !simInfo.operatorCode().isBlank()) {
                     Optional<Operator> operator = referenceService.resolveOperatorFromRawName(
                             simInfo.operatorCode(), countryCode);
@@ -251,12 +255,13 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
                     sim.setDailySmsQuota(simInfo.dailyQuota());
                 }
 
-                deviceSimRepository.save(sim);
-                log.debug("SIM slot {} sauvegardée pour device {}", simInfo.slotIndex(), deviceId);
+                // 🔥 FORCE LE FLUSH : saveAndFlush pousse immédiatement les modifications en BDD
+                // pour que le prochain clic détecte instantanément la ligne existante.
+                deviceSimRepository.saveAndFlush(sim);
+                log.info("SIM slot {} synchronisée avec succès (ID: {}) pour le device {}", sim.getSlotIndex(), sim.getId(), deviceId);
             }
 
-            log.info("Rapport SIMs traité avec succès pour device {}: {} SIMs persistées",
-                    deviceId, report.sims().size());
+            log.info("Rapport SIMs traité avec succès pour device {}", deviceId);
 
         } catch (Exception e) {
             log.error("Erreur lors du traitement du rapport SIMs pour device {}", deviceId, e);
