@@ -1,6 +1,5 @@
 package TNB.SmsGateway.websocket.session;
 
-import TNB.SmsGateway.entity.Device;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketSession;
 
@@ -16,12 +15,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * - Map sessionId → deviceId
  * - Envoi de messages aux devices connectés
  * - Gestion des déconnexions
- *
- * SCÉNARIOS:
- * 1. Connexion: enregistrement de la session
- * 2. Envoi: envoi de messages à un device spécifique
- * 3. Broadcast: envoi à tous les devices
- * 4. Déconnexion: suppression de la session
  */
 @Component
 public class DeviceSessionManager {
@@ -78,6 +71,16 @@ public class DeviceSessionManager {
     }
 
     /**
+     * 🔥 AJOUT COMPATIBILITÉ : Alias utilisé par le DeviceWebSocketHandler
+     *
+     * @param deviceId ID du device
+     * @return WebSocketSession ou null
+     */
+    public WebSocketSession getSessionByDeviceId(UUID deviceId) {
+        return sessions.get(deviceId);
+    }
+
+    /**
      * SCÉNARIO: Récupérer le deviceId à partir d'une session
      *
      * @param sessionId ID de la session
@@ -95,6 +98,15 @@ public class DeviceSessionManager {
      */
     public boolean isDeviceConnected(UUID deviceId) {
         return sessions.containsKey(deviceId);
+    }
+
+    /**
+     * 🔥 AJOUT SÉCURITÉ : Vérifie si la session existe ET est activement ouverte
+     * Utile pour valider l'état avant un envoi API client.
+     */
+    public boolean hasActiveSession(UUID deviceId) {
+        WebSocketSession session = sessions.get(deviceId);
+        return session != null && session.isOpen();
     }
 
     /**
@@ -118,7 +130,6 @@ public class DeviceSessionManager {
             try {
                 session.sendMessage(new org.springframework.web.socket.TextMessage(message));
             } catch (Exception e) {
-                // Log l'erreur
                 removeSession(deviceId);
             }
         }
@@ -136,7 +147,7 @@ public class DeviceSessionManager {
                     entry.getValue().sendMessage(new org.springframework.web.socket.TextMessage(message));
                 }
             } catch (Exception e) {
-                // Log
+                // Log amorti
             }
         }
     }

@@ -87,6 +87,20 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        // 🔥 SECURITÉ & DÉSYNCHRONISATION : Éviction de l'ancienne session fantôme
+        // Si le téléphone s'est déconnecté brutalement, son ancienne session WebSocket est encore ouverte côté serveur.
+        WebSocketSession oldSession = sessionManager.getSessionByDeviceId(deviceId);
+        if (oldSession != null && oldSession.isOpen()) {
+            log.info("Session fantôme détectée pour le device {}. Fermeture immédiate de l'ancienne liaison.", deviceId);
+            try {
+                oldSession.close(CloseStatus.POLICY_VIOLATION.withReason("Nouvelle connexion du même appareil"));
+            } catch (Exception e) {
+                log.error("Impossible de fermer proprement l'ancienne session pour {}", deviceId, e);
+            }
+            sessionManager.removeSession(deviceId);
+        }
+
+        // Enregistrement de la nouvelle session clean
         sessionManager.registerSession(deviceId, session);
         deviceStatusService.updateStatus(deviceId, DeviceStatus.ONLINE);
 
@@ -96,7 +110,7 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
         );
         session.sendMessage(new TextMessage(objectMapper.writeValueAsString(success)));
 
-        log.info("Device {} connecté", deviceId);
+        log.info("Device {} connecté avec succès (Session unique)", deviceId);
     }
 
     @Override
@@ -174,17 +188,6 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
         log.debug("Heartbeat reçu de device {}", deviceId);
     }
 
-    /**
-     * SCÉNARIO: Le device envoie la liste des SIMs détectées
-     * ÉTAPES:
-     * 1. Parser le rapport des SIMs
-     * 2. Pour chaque SIM: résoudre l'opérateur, chercher si elle existe déjà (device + slotIndex)
-     * 3. Créer ou mettre à jour, avec le quota en String ("ILLIMITE" ou nombre)
-     * 4. Sauvegarder en base
-     *
-     * @param deviceId ID du device
-     * @param data Données du rapport
-     */
     private void handleDeviceSimsReport(UUID deviceId, Map<String, Object> data) {
         try {
             String json = objectMapper.writeValueAsString(data);
@@ -211,8 +214,6 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
                             return newSim;
                         });
 
-                // 🔥 Résolution par nom brut (ex: "Orange CM") + pays du device,
-                // au lieu d'un code exact. Évite l'échec "Opérateur inconnu 'Orange CM'".
                 if (simInfo.operatorCode() != null && !simInfo.operatorCode().isBlank()) {
                     Optional<Operator> operator = referenceService.resolveOperatorFromRawName(
                             simInfo.operatorCode(), countryCode);
@@ -321,10 +322,10 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    public void dispatchSms(UUID deviceId, String slotIndex,String messageId, String to, String body) {
-        DispatchMessage dispatch = new DispatchMessage(messageId, slotIndex ,to, body);
+    public void dispatchSms(UUID deviceId, String slotIndex, String messageId, String to, String body) {
+        DispatchMessage dispatch = new DispatchMessage(messageId, slotIndex, to, body);
         sendToDevice(deviceId, WebSocketMessageType.DISPATCH_SMS.getValue(), dispatch);
-        log.info("Commande DISPATCH_SMS envoyée au device {} pour le message {} au slot {} ", deviceId, messageId, slotIndex);
+        log.info("Commande DISPATCH_SMS envoyée au device {} pour le message {} au slot {}", deviceId, messageId, slotIndex);
     }
 
     public void requestSimsReport(UUID deviceId) {
