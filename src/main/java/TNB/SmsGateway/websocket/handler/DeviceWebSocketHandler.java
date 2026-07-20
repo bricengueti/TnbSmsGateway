@@ -87,20 +87,17 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        // 🔥 SECURITÉ & DÉSYNCHRONISATION : Éviction de l'ancienne session fantôme
-        // Si le téléphone s'est déconnecté brutalement, son ancienne session WebSocket est encore ouverte côté serveur.
-        WebSocketSession oldSession = sessionManager.getSessionByDeviceId(deviceId);
-        if (oldSession != null && oldSession.isOpen()) {
+        // 🔥 SÉCURITÉ SESSION UNIQUE : Si une ancienne session existe pour ce device, on la ferme explicitement d'abord
+        WebSocketSession oldSession = sessionManager.getSession(deviceId);
+        if (oldSession != null && !oldSession.getId().equals(session.getId())) {
             log.info("Session fantôme détectée pour le device {}. Fermeture immédiate de l'ancienne liaison.", deviceId);
             try {
-                oldSession.close(CloseStatus.POLICY_VIOLATION.withReason("Nouvelle connexion du même appareil"));
+                oldSession.close(CloseStatus.POLICY_VIOLATION);
             } catch (Exception e) {
-                log.error("Impossible de fermer proprement l'ancienne session pour {}", deviceId, e);
+                log.debug("Erreur lors de la fermeture de la session fantôme", e);
             }
-            sessionManager.removeSession(deviceId);
         }
 
-        // Enregistrement de la nouvelle session clean
         sessionManager.registerSession(deviceId, session);
         deviceStatusService.updateStatus(deviceId, DeviceStatus.ONLINE);
 
@@ -111,6 +108,9 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
         session.sendMessage(new TextMessage(objectMapper.writeValueAsString(success)));
 
         log.info("Device {} connecté avec succès (Session unique)", deviceId);
+
+        // 🔄 AUTOMATION : Dès que l'authentification réussit, on demande immédiatement un rapport SIM actualisé au device Android
+        requestSimsReport(deviceId);
     }
 
     @Override
@@ -118,9 +118,18 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
         UUID deviceId = sessionManager.getDeviceIdBySession(session.getId());
 
         if (deviceId != null) {
-            deviceStatusService.markOffline(deviceId);
-            sessionManager.removeSession(deviceId);
-            log.info("Device {} déconnecté", deviceId);
+            // 🔥 CRITIQUE : On ne passe OFFLINE que si la session qui se ferme est bien la session ACTUELLE stockée dans le manager.
+            // Si c'est une vieille session fantôme qui se ferme alors qu'une nouvelle est active, on ne touche à rien !
+            WebSocketSession currentActiveSession = sessionManager.getSession(deviceId);
+            if (currentActiveSession != null && currentActiveSession.getId().equals(session.getId())) {
+                deviceStatusService.markOffline(deviceId);
+                sessionManager.removeSession(deviceId);
+                log.info("Device {} déconnecté proprement", deviceId);
+            } else {
+                // C'était une session fantôme mourante, on nettoie juste son index inversé sans impacter le statut ONLINE global
+                sessionManager.removeSessionBySessionId(session.getId());
+                log.info("Ancienne session déloguée pour le device {} (la nouvelle session reste active)", deviceId);
+            }
         }
     }
 
@@ -130,10 +139,14 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
         UUID deviceId = sessionManager.getDeviceIdBySession(session.getId());
 
         if (deviceId != null) {
-            deviceStatusService.markOffline(deviceId);
-            sessionManager.removeSession(deviceId);
+            WebSocketSession currentActiveSession = sessionManager.getSession(deviceId);
+            if (currentActiveSession != null && currentActiveSession.getId().equals(session.getId())) {
+                deviceStatusService.markOffline(deviceId);
+                sessionManager.removeSession(deviceId);
+            } else {
+                sessionManager.removeSessionBySessionId(session.getId());
+            }
         }
-
         session.close(CloseStatus.SERVER_ERROR);
     }
 
@@ -323,9 +336,9 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
     }
 
     public void dispatchSms(UUID deviceId, String slotIndex, String messageId, String to, String body) {
-        DispatchMessage dispatch = new DispatchMessage(messageId, slotIndex, to, body);
+        DispatchMessage dispatch = new DispatchMessage(messageId, slotIndex ,to, body);
         sendToDevice(deviceId, WebSocketMessageType.DISPATCH_SMS.getValue(), dispatch);
-        log.info("Commande DISPATCH_SMS envoyée au device {} pour le message {} au slot {}", deviceId, messageId, slotIndex);
+        log.info("Commande DISPATCH_SMS envoyée au device {} pour le message {} au slot {} ", deviceId, messageId, slotIndex);
     }
 
     public void requestSimsReport(UUID deviceId) {
