@@ -5,12 +5,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;
 
-@Schema(description = "Réponse avec les informations d'un device")
+@Schema(description = "Réponse détaillant un device")
 public record DeviceResponse(
         @Schema(description = "ID du device", example = "550e8400-e29b-41d4-a716-446655440000")
         String id,
 
-        @Schema(description = "Nom du device", example = "Device Cameroun 1")
+        @Schema(description = "Nom du device", example = "Téléphone Orange - bureau")
         String label,
 
         @Schema(description = "Code pays", example = "CM")
@@ -19,18 +19,19 @@ public record DeviceResponse(
         @Schema(description = "Nom du pays", example = "Cameroun")
         String countryName,
 
-        @Schema(description = "Statut du device", example = "ONLINE")
+        @Schema(description = "Statut actuel", example = "ONLINE")
         String status,
 
-        @Schema(description = "Date de pairing", example = "2026-07-16T14:30:00Z")
+        @Schema(description = "Date de pairing")
         Instant pairedAt,
 
-        @Schema(description = "Dernier heartbeat", example = "2026-07-16T14:35:00Z")
+        @Schema(description = "Dernier heartbeat reçu")
         Instant lastHeartbeatAt,
 
-        @Schema(description = "Liste des SIMs")
-        List<DeviceSimResponse> sims,
+        @Schema(description = "SIMs associées à ce device")
+        List<DeviceSimResponse> sims
 
-        @Schema(description = "Code de pairing (valable 15 minutes)", example = "654321")
-        String pairingCode
+        // ❌ Retiré : String pairingCode
+        // N'existe plus sur l'entité Device — le code de connexion vit
+        // désormais au niveau compte (voir PairingCodeResponse ci-dessous).
 ) {}

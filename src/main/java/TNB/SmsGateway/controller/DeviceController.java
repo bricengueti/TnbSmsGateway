@@ -1,7 +1,6 @@
 package TNB.SmsGateway.controller;
 
 import TNB.SmsGateway.dto.request.DevicePairRequest;
-import TNB.SmsGateway.dto.request.DeviceRegisterRequest;
 import TNB.SmsGateway.dto.request.DeviceUpdateRequest;
 import TNB.SmsGateway.dto.response.DevicePairResponse;
 import TNB.SmsGateway.dto.response.DeviceResponse;
@@ -36,40 +35,11 @@ public class DeviceController {
         this.devicePairingService = devicePairingService;
     }
 
-    // =============================================
-    // ===== ENREGISTREMENT (Dashboard) =====
-    // =============================================
-
-    @Operation(
-            summary = "Enregistrer un device",
-            description = "Crée un nouveau device et génère un code de pairing à 6 chiffres valable 15 minutes."
-    )
-    @ApiResponses(value = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "201",
-                    description = "Device créé avec succès",
-                    content = @Content(schema = @Schema(implementation = DeviceResponse.class))
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "404",
-                    description = "Pays non trouvé"
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "401",
-                    description = "Token JWT invalide ou manquant"
-            )
-    })
-    @SecurityRequirement(name = "BearerAuth")
-    @PostMapping("/register")
-    public ResponseEntity<DeviceResponse> registerDevice(
-            @Valid @RequestBody DeviceRegisterRequest request,
-            Authentication authentication
-    ) {
-        // 🔥 Récupérer l'ID correctement
-        UUID userId = getUserIdFromAuthentication(authentication);
-        DeviceResponse response = deviceService.registerDevice(userId, request);
-        return ResponseEntity.status(201).body(response);
-    }
+    // ❌ Supprimé : POST /register
+    // La création d'un device ne se fait plus manuellement depuis le
+    // dashboard avec un code jetable — elle se fait automatiquement
+    // au moment du pairing (voir IntegrationController.activate() pour
+    // générer le code de connexion, et /pair ci-dessous pour l'utiliser).
 
     // =============================================
     // ===== PAIRING (App mobile) =====
@@ -77,7 +47,8 @@ public class DeviceController {
 
     @Operation(
             summary = "Pairing d'un device",
-            description = "L'app mobile soumet le code de pairing pour finaliser l'enregistrement."
+            description = "L'app mobile soumet le code de connexion du compte (réutilisable sur plusieurs " +
+                    "devices) ainsi que le pays détecté sur la SIM. Un nouveau device est créé à cet instant."
     )
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -87,7 +58,7 @@ public class DeviceController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "Code de pairing invalide ou expiré"
+                    description = "Code de connexion invalide/révoqué, ou pays non supporté"
             )
     })
     @PostMapping("/pair")
@@ -194,6 +165,41 @@ public class DeviceController {
     }
 
     // =============================================
+    // ===== RÉVOCATION (nouveau) =====
+    // =============================================
+
+    @Operation(
+            summary = "Révoquer un device",
+            description = "Bloque immédiatement ce device précis (ne peut plus se connecter, n'apparaît plus " +
+                    "comme disponible pour l'envoi de SMS) sans affecter le code de connexion du compte ni les " +
+                    "autres devices déjà pairés avec ce même code."
+    )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "Device révoqué"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "Device non trouvé"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Token JWT invalide ou manquant"
+            )
+    })
+    @SecurityRequirement(name = "BearerAuth")
+    @PostMapping("/{id}/revoke")
+    public ResponseEntity<ApiResponse> revokeDevice(
+            @PathVariable UUID id,
+            Authentication authentication
+    ) {
+        UUID userId = getUserIdFromAuthentication(authentication);
+        deviceService.revokeDevice(userId, id);
+        return ResponseEntity.ok(new ApiResponse("Device révoqué avec succès", true));
+    }
+
+    // =============================================
     // ===== SUPPRESSION =====
     // =============================================
 
@@ -230,9 +236,6 @@ public class DeviceController {
     // ===== UTILITAIRE =====
     // =============================================
 
-    /**
-     * Extraire l'ID utilisateur de l'authentification
-     */
     private UUID getUserIdFromAuthentication(Authentication authentication) {
         Object principal = authentication.getPrincipal();
 

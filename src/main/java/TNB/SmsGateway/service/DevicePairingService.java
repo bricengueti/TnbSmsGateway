@@ -1,13 +1,19 @@
 package TNB.SmsGateway.service;
 
-
 import TNB.SmsGateway.dto.request.DevicePairRequest;
 import TNB.SmsGateway.dto.response.DevicePairResponse;
+import TNB.SmsGateway.entity.Country;
 import TNB.SmsGateway.entity.Device;
 import TNB.SmsGateway.entity.DeviceStatus;
+import TNB.SmsGateway.entity.PairingCode;
+import TNB.SmsGateway.exception.BusinessException;
 import TNB.SmsGateway.exception.device.InvalidPairingCodeException;
 import TNB.SmsGateway.repository.DeviceRepository;
+import TNB.SmsGateway.repository.PairingCodeRepository;
 import TNB.SmsGateway.utils.SecurityUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,76 +23,78 @@ import java.util.UUID;
 /**
  * SERVICE: DevicePairingService
  *
- * DESCRIPTION: Gère le pairing entre le dashboard et l'app mobile Android
- * - Validation du code de pairing
- * - Génération du secret token
- * - Activation du device
- * - Vérification du secret token pour WebSocket
+ * DESCRIPTION: Gère le pairing entre l'app mobile Android et le compte
+ * utilisateur, via le code de connexion réutilisable (PairingCode).
  *
  * SCÉNARIOS:
- * 1. Pairing: l'app mobile soumet le code de pairing
- * 2. Expiration: code invalide après 15 minutes
- * 3. Re-pairing: impossible si déjà pairé
- * 4. WebSocket: vérification du secret token à la connexion
+ * 1. Pairing: l'app mobile soumet le code de connexion + le pays détecté
+ *    de la SIM → un NOUVEAU Device est créé à cet instant précis
+ * 2. Le même code peut être réutilisé pour pairer plusieurs devices
+ * 3. WebSocket: vérification du secret token (BCrypt) à la connexion
  */
 @Service
 public class DevicePairingService {
 
-    private final DeviceRepository deviceRepository;
+    private static final Logger log = LoggerFactory.getLogger(DevicePairingService.class);
 
-    public DevicePairingService(DeviceRepository deviceRepository) {
+    private final DeviceRepository deviceRepository;
+    private final PairingCodeRepository pairingCodeRepository;
+    private final ReferenceService referenceService;
+
+    public DevicePairingService(DeviceRepository deviceRepository,
+                                PairingCodeRepository pairingCodeRepository,
+                                ReferenceService referenceService) {
         this.deviceRepository = deviceRepository;
+        this.pairingCodeRepository = pairingCodeRepository;
+        this.referenceService = referenceService;
     }
 
     /**
-     * SCÉNARIO: L'app mobile soumet le code de pairing
+     * SCÉNARIO: L'app mobile soumet le code de connexion pour s'enregistrer
      * ÉTAPES:
-     * 1. Trouver le device par le code de pairing
-     * 2. Vérifier que le code n'a pas expiré (15min)
-     * 3. Vérifier que le device n'est pas déjà pairé
-     * 4. Générer un secret token (UUID sans tirets)
-     * 5. Hasher le secret pour stockage
-     * 6. Mettre à jour le device (pairedAt, secretTokenHash)
-     * 7. Status = OFFLINE (en attente de connexion WS)
-     * 8. Retourner le secret token (stocké par l'app mobile)
-     *
-     * @param request Code de pairing
-     * @return DevicePairResponse avec secret token
-     * @throws InvalidPairingCodeException Si code invalide/expiré/déjà utilisé
+     * 1. Hacher le code reçu (déterministe) et le retrouver en base
+     * 2. Vérifier qu'il n'est pas révoqué
+     * 3. Résoudre le pays depuis le countryIso détecté par l'app Android
+     * 4. Créer le Device (status DISABLED, en attente de 1ère connexion WS)
+     * 5. Générer le secretToken, le hacher en BCrypt (cohérent avec
+     *    DeviceWebSocketHandler.verifySecretToken)
+     * 6. Marquer le code de connexion comme utilisé (traçabilité, pas
+     *    d'invalidation — il reste réutilisable pour d'autres devices)
      */
     @Transactional
     public DevicePairResponse pairDevice(DevicePairRequest request) {
-        String pairingCode = request.pairingCode();
+        String pairingCodeHash = SecurityUtils.hash(request.pairingCode());
 
-        // 1. Trouver le device par pairing code
-        Device device = deviceRepository.findByPairingCode(pairingCode)
+        PairingCode pairingCode = pairingCodeRepository.findByCodeHash(pairingCodeHash)
                 .orElseThrow(InvalidPairingCodeException::new);
 
-        // 2. Vérifier que le code n'a pas expiré
-        if (device.getPairingCodeExpiresAt() == null ||
-                device.getPairingCodeExpiresAt().isBefore(Instant.now())) {
+        if (pairingCode.isRevoked()) {
             throw new InvalidPairingCodeException();
         }
 
-        // 3. Vérifier que le device n'est pas déjà pairé
-        if (device.getPairedAt() != null) {
-            throw new InvalidPairingCodeException();
-        }
+        Country country = referenceService.findCountryByCode(request.countryIso())
+                .orElseThrow(() -> new BusinessException("Pays non supporté", "COUNTRY_NOT_SUPPORTED", 400));
 
-        // 4. Générer le secret token
-        String secretToken = UUID.randomUUID().toString().replace("-", "");
-        String hashedSecret = SecurityUtils.hash(secretToken);
+        String label = (request.deviceLabel() != null && !request.deviceLabel().isBlank())
+                ? request.deviceLabel()
+                : "Téléphone " + country.getCode();
 
-        // 5. Mettre à jour le device
-        device.setSecretTokenHash(hashedSecret);
+        Device device = new Device(pairingCode.getUser(), country, label);
+        device.setStatus(DeviceStatus.DISABLED); // passera ONLINE à la 1ère connexion WebSocket réussie
         device.setPairedAt(Instant.now());
-        device.setStatus(DeviceStatus.OFFLINE);
-        device.setPairingCode(null);
-        device.setPairingCodeExpiresAt(null);
+
+        // ✅ BCrypt uniformisé (cohérent avec DeviceWebSocketHandler.verifySecretToken)
+        String secretToken = UUID.randomUUID().toString().replace("-", "");
+        device.setSecretTokenHash(BCrypt.hashpw(secretToken, BCrypt.gensalt()));
 
         deviceRepository.save(device);
 
-        // 6. Retourner le secret token
+        pairingCode.markUsed();
+        pairingCodeRepository.save(pairingCode);
+
+        log.info("✅ Nouveau device {} pairé pour user {} via code {}...",
+                device.getId(), pairingCode.getUser().getId(), pairingCode.getCodePrefix());
+
         return new DevicePairResponse(
                 device.getId().toString(),
                 secretToken,
@@ -96,22 +104,20 @@ public class DevicePairingService {
 
     /**
      * SCÉNARIO: Vérifier le secret token lors de la connexion WebSocket
-     *
-     * @param deviceId ID du device
-     * @param secretToken Secret token fourni par l'app
-     * @return true si le token est valide
+     * (méthode conservée pour compatibilité — DeviceWebSocketHandler a
+     * actuellement sa propre vérification BCrypt en doublon, à voir si
+     * on centralise ici à l'étape suivante)
      */
     public boolean verifySecretToken(String deviceId, String secretToken) {
         try {
             UUID uuid = UUID.fromString(deviceId);
-            Device device = deviceRepository.findById(uuid)
-                    .orElse(null);
+            Device device = deviceRepository.findById(uuid).orElse(null);
 
-            if (device == null || device.getSecretTokenHash() == null) {
+            if (device == null || device.getSecretTokenHash() == null || device.isRevoked()) {
                 return false;
             }
 
-            return SecurityUtils.verify(secretToken, device.getSecretTokenHash());
+            return BCrypt.checkpw(secretToken, device.getSecretTokenHash());
         } catch (Exception e) {
             return false;
         }

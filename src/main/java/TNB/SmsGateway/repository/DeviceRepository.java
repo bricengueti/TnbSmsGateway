@@ -26,7 +26,8 @@ public interface DeviceRepository extends JpaRepository<Device, UUID> {
 
     List<Device> findByStatus(DeviceStatus status);
 
-    Optional<Device> findByPairingCode(String pairingCode);
+    // ❌ Supprimé : findByPairingCode(String pairingCode)
+    // Le pairing ne se fait plus via un champ sur Device — voir PairingCodeRepository.
 
     Optional<Device> findBySecretTokenHash(String secretTokenHash);
 
@@ -36,29 +37,18 @@ public interface DeviceRepository extends JpaRepository<Device, UUID> {
     @Query("SELECT d FROM Device d LEFT JOIN FETCH d.sims WHERE d.user.id = :userId")
     List<Device> findByUserIdWithSims(@Param("userId") UUID userId);
 
-    /**
-     * 🔥 CORRIGÉ: retire "s.dailySmsSent < s.dailySmsQuota" du JPQL
-     * (impossible de comparer Integer et String directement).
-     * Le filtrage sur le quota restant se fait maintenant côté Java,
-     * dans findAvailableDevices(...) ci-dessous, via sim.hasQuota().
-     */
     @Query("SELECT DISTINCT d FROM Device d " +
             "JOIN d.sims s " +
             "WHERE d.user.id = :userId " +
             "AND d.country.code = :countryCode " +
             "AND s.operator.code = :operatorCode " +
             "AND d.status = 'ONLINE' " +
-            "AND s.isActive = true")
+            "AND s.isActive = true " +
+            "AND d.revokedAt IS NULL")
     List<Device> findCandidateDevicesForQuota(@Param("userId") UUID userId,
                                               @Param("countryCode") String countryCode,
                                               @Param("operatorCode") String operatorCode);
 
-    /**
-     * 🔥 NOUVEAU: remplace l'ancienne findAvailableDevices() basée sur JPQL cassé.
-     * Filtre en Java les devices dont AU MOINS UNE sim correspondante a encore du quota.
-     * Résultat trié par dailySmsSent croissant de la sim concernée (comportement équivalent
-     * à l'ancien ORDER BY s.dailySmsSent ASC).
-     */
     default List<Device> findAvailableDevices(UUID userId, String countryCode, String operatorCode) {
         return findCandidateDevicesForQuota(userId, countryCode, operatorCode).stream()
                 .filter(device -> device.getSims().stream()
@@ -73,30 +63,15 @@ public interface DeviceRepository extends JpaRepository<Device, UUID> {
                 .toList();
     }
 
-    /**
-     * 🔥 NOUVEAU: remplace l'ancienne findLeastUsedDevice() basée sur JPQL cassé.
-     * Réutilise findAvailableDevices() (déjà trié par usage croissant) et prend le premier.
-     */
     default Optional<Device> findLeastUsedDevice(UUID userId, String countryCode, String operatorCode) {
         return findAvailableDevices(userId, countryCode, operatorCode).stream().findFirst();
     }
 
     // ===== PAIRING =====
-
-    @Modifying
-    @Transactional
-    @Query("UPDATE Device d SET d.pairingCode = :pairingCode, d.pairingCodeExpiresAt = :expiresAt WHERE d.id = :deviceId")
-    void updatePairingCode(@Param("deviceId") UUID deviceId,
-                           @Param("pairingCode") String pairingCode,
-                           @Param("expiresAt") Instant expiresAt);
-
-    @Modifying
-    @Transactional
-    @Query("UPDATE Device d SET d.pairedAt = :pairedAt, d.secretTokenHash = :secretHash, d.status = 'OFFLINE' " +
-            "WHERE d.id = :deviceId")
-    void markAsPaired(@Param("deviceId") UUID deviceId,
-                      @Param("pairedAt") Instant pairedAt,
-                      @Param("secretHash") String secretHash);
+    // ❌ Supprimés : updatePairingCode(...) et markAsPaired(...)
+    // Le pairing crée désormais directement une nouvelle ligne Device
+    // (via deviceRepository.save(new Device(...))) plutôt que de mettre
+    // à jour une ligne existante créée au préalable côté dashboard.
 
     @Modifying
     @Transactional
@@ -108,6 +83,14 @@ public interface DeviceRepository extends JpaRepository<Device, UUID> {
     @Query("UPDATE Device d SET d.lastHeartbeatAt = :heartbeatAt WHERE d.id = :deviceId")
     void updateHeartbeat(@Param("deviceId") UUID deviceId, @Param("heartbeatAt") Instant heartbeatAt);
 
+    // ✅ Ajouté : révocation individuelle d'un device (bouton "Révoquer"
+    // dans la liste des devices du dashboard), sans toucher au PairingCode
+    // du compte qui reste valable pour les autres devices.
+    @Modifying
+    @Transactional
+    @Query("UPDATE Device d SET d.revokedAt = :revokedAt, d.status = 'DISABLED' WHERE d.id = :deviceId")
+    void revokeById(@Param("deviceId") UUID deviceId, @Param("revokedAt") Instant revokedAt);
+
     // ===== COVERAGE =====
 
     @Query("SELECT d.country.code, s.operator.code, COUNT(d) " +
@@ -116,6 +99,7 @@ public interface DeviceRepository extends JpaRepository<Device, UUID> {
             "WHERE d.user.id = :userId " +
             "AND d.status = 'ONLINE' " +
             "AND s.isActive = true " +
+            "AND d.revokedAt IS NULL " +
             "GROUP BY d.country.code, s.operator.code")
     List<Object[]> getCoverageByUser(@Param("userId") UUID userId);
 
@@ -123,6 +107,7 @@ public interface DeviceRepository extends JpaRepository<Device, UUID> {
             "FROM Device d " +
             "WHERE d.user.id = :userId " +
             "AND d.status = 'ONLINE' " +
+            "AND d.revokedAt IS NULL " +
             "GROUP BY d.country.code")
     List<Object[]> getDeviceCountByCountry(@Param("userId") UUID userId);
 

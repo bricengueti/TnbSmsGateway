@@ -2,12 +2,8 @@ package TNB.SmsGateway.entity;
 
 import jakarta.persistence.*;
 import java.time.Instant;
-import jakarta.persistence.*;
-
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Entity
 @Table(name = "devices")
@@ -29,11 +25,10 @@ public class Device extends BaseAudit {
     @Column(name = "secret_token_hash")
     private String secretTokenHash;
 
-    @Column(name = "pairing_code")
-    private String pairingCode;
-
-    @Column(name = "pairing_code_expires_at")
-    private Instant pairingCodeExpiresAt;
+    // ❌ Supprimés : pairingCode / pairingCodeExpiresAt
+    // Le code de connexion vit désormais au niveau du compte (PairingCode),
+    // réutilisable sur plusieurs devices. Le Device n'est créé qu'au moment
+    // où ce code est saisi et validé sur le téléphone.
 
     @Column(name = "paired_at")
     private Instant pairedAt;
@@ -41,11 +36,13 @@ public class Device extends BaseAudit {
     @Column(name = "last_heartbeat_at")
     private Instant lastHeartbeatAt;
 
-    // ===== RELATION AVEC DeviceSim =====
+    // ✅ Ajouté : révocation individuelle d'un device sans toucher au
+    // code de connexion du compte (qui reste valable pour les autres devices)
+    @Column(name = "revoked_at")
+    private Instant revokedAt;
+
     @OneToMany(mappedBy = "device", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<DeviceSim> sims = new ArrayList<>();
-
-    // ===== CONSTRUCTEURS =====
 
     public Device() {
         super();
@@ -57,8 +54,6 @@ public class Device extends BaseAudit {
         this.country = country;
         this.label = label;
     }
-
-    // ===== GETTERS & SETTERS =====
 
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
@@ -75,31 +70,29 @@ public class Device extends BaseAudit {
     public String getSecretTokenHash() { return secretTokenHash; }
     public void setSecretTokenHash(String secretTokenHash) { this.secretTokenHash = secretTokenHash; }
 
-    public String getPairingCode() { return pairingCode; }
-    public void setPairingCode(String pairingCode) { this.pairingCode = pairingCode; }
-
-    public Instant getPairingCodeExpiresAt() { return pairingCodeExpiresAt; }
-    public void setPairingCodeExpiresAt(Instant pairingCodeExpiresAt) { this.pairingCodeExpiresAt = pairingCodeExpiresAt; }
-
     public Instant getPairedAt() { return pairedAt; }
     public void setPairedAt(Instant pairedAt) { this.pairedAt = pairedAt; }
 
     public Instant getLastHeartbeatAt() { return lastHeartbeatAt; }
     public void setLastHeartbeatAt(Instant lastHeartbeatAt) { this.lastHeartbeatAt = lastHeartbeatAt; }
 
+    public Instant getRevokedAt() { return revokedAt; }
+    public void setRevokedAt(Instant revokedAt) { this.revokedAt = revokedAt; }
+
     public List<DeviceSim> getSims() { return sims; }
     public void setSims(List<DeviceSim> sims) { this.sims = sims; }
 
-    // ===== MÉTHODES UTILITAIRES =====
-
-    public boolean isPairingCodeValid() {
-        return pairingCode != null &&
-                pairingCodeExpiresAt != null &&
-                Instant.now().isBefore(pairingCodeExpiresAt);
+    public boolean isOnline() {
+        return DeviceStatus.ONLINE.equals(status) && !isRevoked();
     }
 
-    public boolean isOnline() {
-        return DeviceStatus.ONLINE.equals(status);
+    public boolean isRevoked() {
+        return revokedAt != null;
+    }
+
+    public void revoke() {
+        this.revokedAt = Instant.now();
+        this.status = DeviceStatus.DISABLED;
     }
 
     public void addSim(DeviceSim sim) {
