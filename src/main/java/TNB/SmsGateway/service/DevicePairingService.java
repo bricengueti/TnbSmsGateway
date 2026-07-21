@@ -63,7 +63,8 @@ public class DevicePairingService {
      */
     @Transactional
     public DevicePairResponse pairDevice(DevicePairRequest request) {
-        String pairingCodeHash = SecurityUtils.hash(request.pairingCode());
+        // Dans DevicePairingService.pairDevice() :
+        String pairingCodeHash = SecurityUtils.hashSha256(request.pairingCode());
 
         PairingCode pairingCode = pairingCodeRepository.findByCodeHash(pairingCodeHash)
                 .orElseThrow(InvalidPairingCodeException::new);

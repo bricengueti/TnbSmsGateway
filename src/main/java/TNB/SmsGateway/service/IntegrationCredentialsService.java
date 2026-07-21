@@ -71,7 +71,8 @@ public class IntegrationCredentialsService {
         ApiKey savedApiKey = apiKeyRepository.save(apiKey);
 
         String rawPairingCode = RandomUtils.generatePairingCode();
-        String pairingCodeHash = SecurityUtils.hash(rawPairingCode);
+        // Dans IntegrationCredentialsService.activateIntegration() et regeneratePairingCode() :
+        String pairingCodeHash = SecurityUtils.hashSha256(rawPairingCode);
         String pairingCodePrefix = rawPairingCode.substring(0, Math.min(3, rawPairingCode.length()));
 
         PairingCode pairingCode = new PairingCode(user, pairingCodeHash, pairingCodePrefix);
@@ -101,7 +102,8 @@ public class IntegrationCredentialsService {
                 });
 
         String rawPairingCode = RandomUtils.generatePairingCode();
-        String pairingCodeHash = SecurityUtils.hash(rawPairingCode);
+        // Dans IntegrationCredentialsService.activateIntegration() et regeneratePairingCode() :
+        String pairingCodeHash = SecurityUtils.hashSha256(rawPairingCode);
         String pairingCodePrefix = rawPairingCode.substring(0, Math.min(3, rawPairingCode.length()));
 
         PairingCode pairingCode = new PairingCode(user, pairingCodeHash, pairingCodePrefix);
