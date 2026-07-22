@@ -85,4 +85,9 @@ public interface DeviceSimRepository extends JpaRepository<DeviceSim, UUID> {
 
     @Query("SELECT s.device.id, COUNT(s) FROM DeviceSim s WHERE s.isActive = true GROUP BY s.device.id")
     List<Object[]> countActiveSimsByDevice();
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE DeviceSim s SET s.dispatchMinDelaySec = :minSec, s.dispatchMaxDelaySec = :maxSec WHERE s.id = :simId")
+    void updatePacing(@Param("simId") UUID simId, @Param("minSec") Integer minSec, @Param("maxSec") Integer maxSec);
 }

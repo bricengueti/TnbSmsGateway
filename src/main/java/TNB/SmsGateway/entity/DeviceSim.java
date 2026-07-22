@@ -28,9 +28,16 @@ public class DeviceSim extends BaseAudit {
     @Column(name = "daily_sms_sent")
     private Integer dailySmsSent = 0;
 
-    // 🔥 String au lieu d'Integer : "ILLIMITE" ou une valeur numérique ("100", "500", ...)
     @Column(name = "daily_sms_quota")
     private String dailySmsQuota = "100";
+
+    // ✅ Surcharge optionnelle de la cadence pour cette SIM précise.
+    // Si null, on retombe sur les valeurs du Device parent.
+    @Column(name = "dispatch_min_delay_sec")
+    private Integer dispatchMinDelaySec;
+
+    @Column(name = "dispatch_max_delay_sec")
+    private Integer dispatchMaxDelaySec;
 
     public DeviceSim() {
         super();
@@ -64,16 +71,18 @@ public class DeviceSim extends BaseAudit {
     public String getDailySmsQuota() { return dailySmsQuota; }
     public void setDailySmsQuota(String dailySmsQuota) { this.dailySmsQuota = dailySmsQuota; }
 
+    public Integer getDispatchMinDelaySec() { return dispatchMinDelaySec; }
+    public void setDispatchMinDelaySec(Integer dispatchMinDelaySec) { this.dispatchMinDelaySec = dispatchMinDelaySec; }
+
+    public Integer getDispatchMaxDelaySec() { return dispatchMaxDelaySec; }
+    public void setDispatchMaxDelaySec(Integer dispatchMaxDelaySec) { this.dispatchMaxDelaySec = dispatchMaxDelaySec; }
+
     // ===== MÉTHODES UTILITAIRES =====
 
     public boolean isUnlimited() {
         return QUOTA_UNLIMITED.equalsIgnoreCase(dailySmsQuota);
     }
 
-    /**
-     * Retourne le quota numérique, ou null si illimité.
-     * @throws NumberFormatException si la valeur stockée n'est ni "ILLIMITE" ni un nombre valide
-     */
     public Integer getNumericQuota() {
         if (isUnlimited()) return null;
         return Integer.parseInt(dailySmsQuota);
@@ -85,12 +94,23 @@ public class DeviceSim extends BaseAudit {
             int quota = Integer.parseInt(dailySmsQuota);
             return dailySmsSent < quota;
         } catch (NumberFormatException e) {
-            // Valeur corrompue en base : on bloque par sécurité plutôt que de laisser passer sans limite
             return false;
         }
     }
 
     public void incrementDailySmsSent() {
         this.dailySmsSent++;
+    }
+
+    /**
+     * ✅ Résout la cadence effective : surcharge de la SIM si définie,
+     * sinon celle du Device parent.
+     */
+    public int resolveEffectiveMinDelaySec() {
+        return dispatchMinDelaySec != null ? dispatchMinDelaySec : device.getDispatchMinDelaySec();
+    }
+
+    public int resolveEffectiveMaxDelaySec() {
+        return dispatchMaxDelaySec != null ? dispatchMaxDelaySec : device.getDispatchMaxDelaySec();
     }
 }

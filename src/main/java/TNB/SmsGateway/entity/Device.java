@@ -25,24 +25,25 @@ public class Device extends BaseAudit {
     @Column(name = "secret_token_hash")
     private String secretTokenHash;
 
-    // ❌ Supprimés : pairingCode / pairingCodeExpiresAt
-    // Le code de connexion vit désormais au niveau du compte (PairingCode),
-    // réutilisable sur plusieurs devices. Le Device n'est créé qu'au moment
-    // où ce code est saisi et validé sur le téléphone.
-
     @Column(name = "paired_at")
     private Instant pairedAt;
 
     @Column(name = "last_heartbeat_at")
     private Instant lastHeartbeatAt;
 
-    // ✅ Ajouté : révocation individuelle d'un device sans toucher au
-    // code de connexion du compte (qui reste valable pour les autres devices)
     @Column(name = "revoked_at")
     private Instant revokedAt;
 
     @OneToMany(mappedBy = "device", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<DeviceSim> sims = new ArrayList<>();
+
+    // ✅ Cadence par défaut du téléphone (utilisée si aucune SIM
+    // individuelle ne surcharge ces valeurs)
+    @Column(name = "dispatch_min_delay_sec", nullable = false)
+    private Integer dispatchMinDelaySec = 8;
+
+    @Column(name = "dispatch_max_delay_sec", nullable = false)
+    private Integer dispatchMaxDelaySec = 25;
 
     public Device() {
         super();
@@ -81,6 +82,12 @@ public class Device extends BaseAudit {
 
     public List<DeviceSim> getSims() { return sims; }
     public void setSims(List<DeviceSim> sims) { this.sims = sims; }
+
+    public Integer getDispatchMinDelaySec() { return dispatchMinDelaySec; }
+    public void setDispatchMinDelaySec(Integer dispatchMinDelaySec) { this.dispatchMinDelaySec = dispatchMinDelaySec; }
+
+    public Integer getDispatchMaxDelaySec() { return dispatchMaxDelaySec; }
+    public void setDispatchMaxDelaySec(Integer dispatchMaxDelaySec) { this.dispatchMaxDelaySec = dispatchMaxDelaySec; }
 
     public boolean isOnline() {
         return DeviceStatus.ONLINE.equals(status) && !isRevoked();

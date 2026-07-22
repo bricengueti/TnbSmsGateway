@@ -120,4 +120,10 @@ public interface DeviceRepository extends JpaRepository<Device, UUID> {
     @Transactional
     @Query("UPDATE Device d SET d.status = 'OFFLINE' WHERE d.id = :deviceId")
     void markAsOffline(@Param("deviceId") UUID deviceId);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE Device d SET d.dispatchMinDelaySec = :minSec, d.dispatchMaxDelaySec = :maxSec WHERE d.id = :deviceId")
+    void updatePacing(@Param("deviceId") UUID deviceId, @Param("minSec") Integer minSec, @Param("maxSec") Integer maxSec);
+
 }
