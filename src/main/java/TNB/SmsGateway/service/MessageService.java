@@ -128,7 +128,6 @@ public class MessageService {
         message.markDelivered();
         messageRepository.save(message);
     }
-
     @Transactional
     public void markAsFailed(UUID messageId, String reason) {
         Message message = findById(messageId);
