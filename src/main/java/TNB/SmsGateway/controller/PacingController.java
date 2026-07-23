@@ -3,22 +3,30 @@ package TNB.SmsGateway.controller;
 import TNB.SmsGateway.dto.common.ApiResponse;
 import TNB.SmsGateway.dto.request.DevicePacingRequest;
 import TNB.SmsGateway.dto.request.SimPacingRequest;
-import TNB.SmsGateway.security.UserPrincipal;
 import TNB.SmsGateway.service.PacingService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
+/**
+ * ⚠️ Endpoints volontairement PUBLICS (voir SecurityConfig) : appelés
+ * directement par l'app mobile, qui n'a pas de JWT utilisateur. Le
+ * deviceId dans l'URL suffit à retrouver le propriétaire (device.getUser())
+ * côté service — pas de vérification d'identité supplémentaire ici.
+ *
+ * Risque accepté : n'importe qui connaissant un deviceId (UUID, non
+ * énumérable en pratique) peut modifier sa cadence d'envoi. Impact limité
+ * puisque cette valeur ne fait qu'espacer des SMS déjà légitimement en
+ * file — elle ne permet ni de lire, ni d'envoyer, ni de détourner des
+ * messages.
+ */
 @RestController
 @RequestMapping("/v1/devices")
 @Tag(name = "Cadence d'envoi", description = "Réglages anti-détection robot (délai entre SMS)")
-@SecurityRequirement(name = "BearerAuth")
 public class PacingController {
 
     private final PacingService pacingService;
@@ -35,11 +43,9 @@ public class PacingController {
     @PatchMapping("/{deviceId}/pacing")
     public ResponseEntity<ApiResponse> updateDevicePacing(
             @PathVariable UUID deviceId,
-            @Valid @RequestBody DevicePacingRequest request,
-            Authentication authentication
+            @Valid @RequestBody DevicePacingRequest request
     ) {
-        UUID userId = getUserIdFromAuthentication(authentication);
-        pacingService.updateDevicePacing(userId, deviceId, request);
+        pacingService.updateDevicePacing(deviceId, request);
         return ResponseEntity.ok(new ApiResponse("Cadence du device mise à jour avec succès", true));
     }
 
@@ -52,23 +58,9 @@ public class PacingController {
     public ResponseEntity<ApiResponse> updateSimPacing(
             @PathVariable UUID deviceId,
             @PathVariable UUID simId,
-            @Valid @RequestBody SimPacingRequest request,
-            Authentication authentication
+            @Valid @RequestBody SimPacingRequest request
     ) {
-        UUID userId = getUserIdFromAuthentication(authentication);
-        pacingService.updateSimPacing(userId, deviceId, simId, request);
+        pacingService.updateSimPacing(deviceId, simId, request);
         return ResponseEntity.ok(new ApiResponse("Cadence de la SIM mise à jour avec succès", true));
-    }
-
-    private UUID getUserIdFromAuthentication(Authentication authentication) {
-        Object principal = authentication.getPrincipal();
-
-        if (principal instanceof UserPrincipal) {
-            return ((UserPrincipal) principal).getId();
-        }
-        if (principal instanceof UUID) {
-            return (UUID) principal;
-        }
-        throw new RuntimeException("Impossible d'extraire l'ID utilisateur");
     }
 }

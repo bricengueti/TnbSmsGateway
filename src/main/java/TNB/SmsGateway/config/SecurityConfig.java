@@ -36,6 +36,12 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/v1/auth/**",
                                 "/v1/devices/pair",
+                                // ✅ Cadence d'envoi : appelée directement par l'app mobile,
+                                // qui n'a pas de JWT utilisateur (seulement deviceId/secretToken
+                                // pour le WebSocket). Le userId est retrouvé côté service via
+                                // device.getUser().getId(), pas besoin d'authentification ici.
+                                "/v1/devices/*/pacing",
+                                "/v1/devices/*/sims/*/pacing",
                                 "/v1/health",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",

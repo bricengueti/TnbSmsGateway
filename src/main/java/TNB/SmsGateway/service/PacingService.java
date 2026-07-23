@@ -27,16 +27,22 @@ public class PacingService {
         this.deviceSimRepository = deviceSimRepository;
     }
 
+    /**
+     * ✅ Plus de vérification de propriétaire : appelé sans authentification
+     * (voir PacingController), le deviceId dans l'URL identifie déjà
+     * directement le device concerné. deviceService.findById() lève déjà
+     * une 404 propre si l'UUID ne correspond à aucun device.
+     */
     @Transactional
-    public void updateDevicePacing(UUID userId, UUID deviceId, DevicePacingRequest request) {
-        Device device = deviceService.findByIdAndUser(deviceId, userId);
+    public void updateDevicePacing(UUID deviceId, DevicePacingRequest request) {
+        Device device = deviceService.findById(deviceId);
         validateRange(request.minDelaySec(), request.maxDelaySec());
         deviceRepository.updatePacing(device.getId(), request.minDelaySec(), request.maxDelaySec());
     }
 
     @Transactional
-    public void updateSimPacing(UUID userId, UUID deviceId, UUID simId, SimPacingRequest request) {
-        Device device = deviceService.findByIdAndUser(deviceId, userId);
+    public void updateSimPacing(UUID deviceId, UUID simId, SimPacingRequest request) {
+        Device device = deviceService.findById(deviceId);
 
         DeviceSim sim = device.getSims().stream()
                 .filter(s -> s.getId().equals(simId))
