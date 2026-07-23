@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -51,11 +52,12 @@ public class WebhookController {
         UUID userId = getCurrentUserId(authentication);
         User user = userService.findByIdOrThrow(userId);
 
-        return ResponseEntity.ok(Map.of(
-                "webhookUrl", user.getWebhookUrl(),
-                "webhookSecret", user.getWebhookSecret() != null ? "••••••••" : null,
-                "hasWebhook", user.getWebhookUrl() != null
-        ));
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("webhookUrl", user.getWebhookUrl());
+        response.put("webhookSecret", user.getWebhookSecret() != null ? "••••••••" : null);
+        response.put("hasWebhook", user.getWebhookUrl() != null);
+
+        return ResponseEntity.ok(response);
     }
 
     @Operation(
