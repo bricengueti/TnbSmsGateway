@@ -95,7 +95,6 @@ public class Message extends BaseAudit {
         this.priority = MessagePriority.NORMAL;
         this.attempts = 0;
     }
-
     // ===== GETTERS & SETTERS =====
 
     public User getUser() { return user; }
