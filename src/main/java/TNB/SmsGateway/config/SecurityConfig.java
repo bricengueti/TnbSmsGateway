@@ -1,6 +1,7 @@
 package TNB.SmsGateway.config;
 
 import TNB.SmsGateway.security.ApiKeyAuthenticationFilter;
+import TNB.SmsGateway.security.DeviceAuthenticationFilter;
 import TNB.SmsGateway.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,11 +20,14 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final ApiKeyAuthenticationFilter apiKeyAuthFilter;
+    private final DeviceAuthenticationFilter deviceAuthFilter;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter,
-                          ApiKeyAuthenticationFilter apiKeyAuthFilter) {
+                          ApiKeyAuthenticationFilter apiKeyAuthFilter,
+                          DeviceAuthenticationFilter deviceAuthFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.apiKeyAuthFilter = apiKeyAuthFilter;
+        this.deviceAuthFilter = deviceAuthFilter;
     }
 
     @Bean
@@ -68,7 +72,8 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(apiKeyAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(apiKeyAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(deviceAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

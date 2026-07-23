@@ -140,6 +140,36 @@ public class MessageService {
         return messageRepository.findByUserOrderByCreatedAtDesc(user, PageRequest.of(page, size));
     }
 
+    /**
+     * Recherche filtrée pour l'écran "Activity Logs" (mobile/dashboard).
+     * direction/status sont attendus au format String (ex: "OUTBOUND", "DELIVERED"),
+     * insensibles à la casse ; une valeur null ou vide est traitée comme "pas de filtre".
+     * Une valeur invalide (ne correspondant à aucun enum) lève une IllegalArgumentException
+     * que le controller traduit en 400.
+     */
+    public Page<Message> searchMessagesByUser(UUID userId, int page, int size,
+                                              String direction, String status, String search) {
+        User user = userService.findByIdOrThrow(userId);
+
+        MessageDirection directionFilter = parseEnumOrNull(direction, MessageDirection.class, "direction");
+        MessageStatus statusFilter = parseEnumOrNull(status, MessageStatus.class, "status");
+        String searchFilter = (search != null && !search.isBlank()) ? search.trim() : null;
+
+        return messageRepository.searchByUser(
+                user, directionFilter, statusFilter, searchFilter, PageRequest.of(page, size));
+    }
+
+    private <E extends Enum<E>> E parseEnumOrNull(String rawValue, Class<E> enumType, String fieldName) {
+        if (rawValue == null || rawValue.isBlank()) {
+            return null;
+        }
+        try {
+            return Enum.valueOf(enumType, rawValue.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Valeur invalide pour '" + fieldName + "': " + rawValue);
+        }
+    }
+
     public List<Message> getPendingMessages() {
         return messageRepository.findPendingMessages();
     }

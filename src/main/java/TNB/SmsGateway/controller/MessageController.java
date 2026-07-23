@@ -94,10 +94,14 @@ public class MessageController {
     public ResponseEntity<PageResponse<MessageResponse>> listMessages(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String direction,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String search,
             Authentication authentication
     ) {
         UUID userId = getUserIdFromAuthentication(authentication);
-        Page<Message> messagePage = messageService.getMessagesByUser(userId, page, size);
+        Page<Message> messagePage = messageService.searchMessagesByUser(
+                userId, page, size, direction, status, search);
 
         List<MessageResponse> data = messagePage.getContent().stream()
                 .map(this::toMessageResponse)

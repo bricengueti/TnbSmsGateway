@@ -170,6 +170,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(error);
     }
 
+    // ==================== ARGUMENTS INVALIDES ====================
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex, WebRequest request) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "INVALID_ARGUMENT", ex.getMessage(), request);
+    }
+
     // ==================== GENERIC EXCEPTIONS ====================
 
     @ExceptionHandler(Exception.class)

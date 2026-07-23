@@ -73,6 +73,25 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
      */
     Page<Message> findByUserAndOperatorCode(User user, String operatorCode, Pageable pageable);
 
+    /**
+     * Recherche filtrée des messages d'un utilisateur (écran "Activity Logs").
+     * Chaque filtre est optionnel : si le paramètre est null, la condition
+     * correspondante est ignorée (comportement "pas de filtre").
+     * La recherche porte sur le numéro de destination et le contenu du message.
+     */
+    @Query("SELECT m FROM Message m WHERE m.user = :user " +
+            "AND (:direction IS NULL OR m.direction = :direction) " +
+            "AND (:status IS NULL OR m.status = :status) " +
+            "AND (:search IS NULL OR LOWER(m.toNumber) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "     OR LOWER(m.fromNumber) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "     OR LOWER(m.body) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+            "ORDER BY m.createdAt DESC")
+    Page<Message> searchByUser(@Param("user") User user,
+                               @Param("direction") MessageDirection direction,
+                               @Param("status") MessageStatus status,
+                               @Param("search") String search,
+                               Pageable pageable);
+
     // ===== UPDATE =====
 
     /**
