@@ -37,34 +37,11 @@ public class IncomingMessageService {
      * Scénario: Device reçoit un SMS → on le traite
      */
     @Transactional
-    public void handleIncomingMessage(UUID deviceId, Map<String, Object> data) {
+    public void handleIncomingMessage(UUID deviceId, Message message) {
         // 1. Récupérer le device
         Device device = deviceService.findById(deviceId);
         User user = device.getUser();
 
-        // 2. Récupérer la SIM
-        Integer slotIndex = (Integer) data.get("simSlot");
-        DeviceSim sim = device.getSims().stream()
-                .filter(s -> s.getSlotIndex().equals(slotIndex))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("SIM non trouvée"));
-
-        // 3. Créer le message entrant
-        Message message = new Message();
-        message.setUser(user);
-        message.setDirection(MessageDirection.INBOUND);
-        message.setFromNumber((String) data.get("from"));
-        message.setToNumber(sim.getPhoneNumber());
-        message.setBody((String) data.get("body"));
-        message.setCountryCode(device.getCountry().getCode());
-        message.setOperatorCode(sim.getOperator().getCode());
-        message.setStatus(MessageStatus.DELIVERED);
-        message.setDevice(device);
-        message.setDeviceSim(sim);
-
-        message = messageRepository.save(message);
-
-        // 4. Envoyer au webhook
         webhookService.sendToWebhook(message, user);
     }
 }

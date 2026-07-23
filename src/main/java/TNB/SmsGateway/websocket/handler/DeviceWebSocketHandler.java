@@ -157,7 +157,7 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         String payload = message.getPayload();
-        log.debug("Message reçu: {}", payload);
+        log.info("Message reçu: {}", payload);
 
         WebSocketMessage<Map<String, Object>> wsMessage = objectMapper.readValue(
                 payload,
@@ -184,7 +184,7 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
             case HEARTBEAT -> handleHeartbeat(deviceId);
             case DEVICE_SIMS_REPORT -> handleDeviceSimsReport(deviceId, data);
             case SMS_STATUS_UPDATE -> handleSmsStatusUpdate(deviceId, data);
-            case INCOMING_SMS -> handleIncomingSms(deviceId, data);
+//            case INCOMING_SMS -> handleIncomingSms(deviceId, data);
             default -> {
                 log.warn("Type de message non géré: {}", type);
                 sendError(session, "Type de message non géré: " + type);
@@ -282,16 +282,21 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
             switch (statusUpdate.status()) {
                 case "SENT" -> {
                     message.setStatus(MessageStatus.SENT);
+                    incomingMessageService.handleIncomingMessage(deviceId, message);
+
                     log.info("Message {} marqué comme SENT", messageId);
                 }
                 case "DELIVERED" -> {
                     message.setStatus(MessageStatus.DELIVERED);
                     message.setDeliveredAt(Instant.now());
+                    incomingMessageService.handleIncomingMessage(deviceId, message);
                     log.info("Message {} marqué comme DELIVERED à {}", messageId, message.getDeliveredAt());
                 }
                 case "FAILED" -> {
                     message.setStatus(MessageStatus.FAILED);
                     message.setErrorReason(statusUpdate.errorReason());
+                    incomingMessageService.handleIncomingMessage(deviceId, message);
+
                     log.info("Message {} marqué comme FAILED: {}", messageId, statusUpdate.errorReason());
                 }
                 default -> log.warn("Status inconnu: {}", statusUpdate.status());
@@ -304,27 +309,15 @@ public class DeviceWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    private void handleIncomingSms(UUID deviceId, Map<String, Object> data) {
-        try {
-            String json = objectMapper.writeValueAsString(data);
-            IncomingSmsMessage incoming = objectMapper.readValue(json, IncomingSmsMessage.class);
-
-            log.info("SMS entrant de {} sur device {} (slot {})",
-                    incoming.from(), deviceId, incoming.simSlot());
-
-            Map<String, Object> dataMap = Map.of(
-                    "from", incoming.from(),
-                    "body", incoming.body(),
-                    "simSlot", incoming.simSlot(),
-                    "receivedAt", incoming.receivedAt() != null ? incoming.receivedAt() : Instant.now().toString()
-            );
-
-            incomingMessageService.handleIncomingMessage(deviceId, dataMap);
-
-        } catch (Exception e) {
-            log.error("Erreur lors du traitement du SMS entrant", e);
-        }
-    }
+//    private void handleIncomingSms(UUID deviceId, Map<String, Object> data) {
+//        try {
+//            log.info("Payload brut SMS entrant reçu du device {}: {}", deviceId, data);
+//
+//
+//        } catch (Exception e) {
+//            log.error("Erreur lors du traitement du SMS entrant", e);
+//        }
+//    }
 
     // =============================================
     // ===== ENVOI DE MESSAGES AUX DEVICES =====

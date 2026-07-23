@@ -87,10 +87,11 @@ public class WebhookService {
             payload.put("messageId", message.getId().toString());
             payload.put("from", message.getFromNumber());
             payload.put("to", message.getToNumber());
-            payload.put("body", message.getBody());
+            payload.put("status", message.getStatus());
             payload.put("countryCode", message.getCountryCode());
+            payload.put("soltIndex", message.getDeviceSim().getSlotIndex());
             payload.put("operator", message.getOperatorCode());
-            payload.put("receivedAt", message.getCreatedAt().toString());
+            payload.put("DeliveredAt", message.getDeliveredAt().toString());
 
             String payloadJson = JsonUtils.toJson(payload);
 
@@ -173,7 +174,7 @@ public class WebhookService {
             payload.put("to", "+237611111111");
             payload.put("body", "Ceci est un message de test");
             payload.put("countryCode", "CM");
-            payload.put("operator", "MTN_CM");
+            payload.put("operator", "MTN");
             payload.put("timestamp", Instant.now().toString());
 
             String payloadJson = JsonUtils.toJson(payload);

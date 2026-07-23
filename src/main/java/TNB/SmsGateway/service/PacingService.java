@@ -10,7 +10,6 @@ import TNB.SmsGateway.repository.DeviceSimRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -37,11 +36,7 @@ public class PacingService {
     @Transactional
     public void updateDevicePacing(UUID deviceId, DevicePacingRequest request) {
         Device device = deviceService.findById(deviceId);
-        Set<DeviceSim> deviceSimActives = deviceSimRepository.findActiveSims(device);
         validateRange(request.minDelaySec(), request.maxDelaySec());
-        for (DeviceSim sim : deviceSimActives) {
-            deviceSimRepository.updatePacing(sim.getId(),request.minDelaySec(), request.maxDelaySec());
-        }
         deviceRepository.updatePacing(device.getId(), request.minDelaySec(), request.maxDelaySec());
     }
 
