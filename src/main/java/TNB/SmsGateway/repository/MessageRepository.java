@@ -92,6 +92,45 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
                                @Param("search") String search,
                                Pageable pageable);
 
+    // ===== STATS =====
+
+    /**
+     * Comptage groupé (direction, status) -> count, pour un utilisateur.
+     * Utilisé par MessageService.getMessageStats() pour construire en un seul
+     * aller-retour DB : total envoyés, total reçus, total échoués, total livrés.
+     * Chaque ligne du résultat : [MessageDirection, MessageStatus, Long count]
+     */
+    @Query("SELECT m.direction, m.status, COUNT(m) FROM Message m " +
+            "WHERE m.user.id = :userId GROUP BY m.direction, m.status")
+    List<Object[]> countMessagesByDirectionAndStatus(@Param("userId") UUID userId);
+
+    /**
+     * Compter les messages par status pour un utilisateur
+     */
+    @Query("SELECT m.status, COUNT(m) FROM Message m WHERE m.user.id = :userId GROUP BY m.status")
+    List<Object[]> countMessagesByStatus(@Param("userId") UUID userId);
+
+    /**
+     * Compter les messages envoyés aujourd'hui par utilisateur
+     */
+    @Query("SELECT COUNT(m) FROM Message m WHERE m.user.id = :userId " +
+            "AND m.direction = 'OUTBOUND' AND m.createdAt > :startOfDay")
+    long countSentToday(@Param("userId") UUID userId, @Param("startOfDay") Instant startOfDay);
+
+    /**
+     * Compter les messages reçus aujourd'hui par utilisateur
+     */
+    @Query("SELECT COUNT(m) FROM Message m WHERE m.user.id = :userId " +
+            "AND m.direction = 'INBOUND' AND m.createdAt > :startOfDay")
+    long countReceivedToday(@Param("userId") UUID userId, @Param("startOfDay") Instant startOfDay);
+
+    /**
+     * Statistiques de livraison par utilisateur
+     */
+    @Query("SELECT COUNT(m), SUM(CASE WHEN m.status = 'DELIVERED' THEN 1 ELSE 0 END) " +
+            "FROM Message m WHERE m.user.id = :userId AND m.direction = 'OUTBOUND'")
+    List<Object[]> getDeliveryStats(@Param("userId") UUID userId);
+
     // ===== UPDATE =====
 
     /**
@@ -150,35 +189,6 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
     @Transactional
     @Query("UPDATE Message m SET m.webhookDeliveredAt = :deliveredAt WHERE m.id = :messageId")
     void markWebhookDelivered(@Param("messageId") UUID messageId, @Param("deliveredAt") Instant deliveredAt);
-
-    // ===== STATS =====
-
-    /**
-     * Compter les messages par status pour un utilisateur
-     */
-    @Query("SELECT m.status, COUNT(m) FROM Message m WHERE m.user.id = :userId GROUP BY m.status")
-    List<Object[]> countMessagesByStatus(@Param("userId") UUID userId);
-
-    /**
-     * Compter les messages envoyés aujourd'hui par utilisateur
-     */
-    @Query("SELECT COUNT(m) FROM Message m WHERE m.user.id = :userId " +
-            "AND m.direction = 'OUTBOUND' AND m.createdAt > :startOfDay")
-    long countSentToday(@Param("userId") UUID userId, @Param("startOfDay") Instant startOfDay);
-
-    /**
-     * Compter les messages reçus aujourd'hui par utilisateur
-     */
-    @Query("SELECT COUNT(m) FROM Message m WHERE m.user.id = :userId " +
-            "AND m.direction = 'INBOUND' AND m.createdAt > :startOfDay")
-    long countReceivedToday(@Param("userId") UUID userId, @Param("startOfDay") Instant startOfDay);
-
-    /**
-     * Statistiques de livraison par utilisateur
-     */
-    @Query("SELECT COUNT(m), SUM(CASE WHEN m.status = 'DELIVERED' THEN 1 ELSE 0 END) " +
-            "FROM Message m WHERE m.user.id = :userId AND m.direction = 'OUTBOUND'")
-    List<Object[]> getDeliveryStats(@Param("userId") UUID userId);
 
     // ===== MAINTENANCE =====
 

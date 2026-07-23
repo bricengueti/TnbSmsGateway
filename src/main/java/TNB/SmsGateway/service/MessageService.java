@@ -2,6 +2,7 @@ package TNB.SmsGateway.service;
 
 import TNB.SmsGateway.dto.request.SendMessageRequest;
 import TNB.SmsGateway.dto.response.MessageResponse;
+import TNB.SmsGateway.dto.response.MessageStatsResponse;
 import TNB.SmsGateway.entity.*;
 import TNB.SmsGateway.exception.BusinessException;
 import TNB.SmsGateway.exception.message.OperatorCountryMismatchException;
@@ -11,6 +12,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -157,6 +161,47 @@ public class MessageService {
 
         return messageRepository.searchByUser(
                 user, directionFilter, statusFilter, searchFilter, PageRequest.of(page, size));
+    }
+
+    /**
+     * Statistiques agrégées pour l'écran Dashboard (mobile).
+     * Un seul aller-retour DB via countMessagesByDirectionAndStatus, plus deux
+     * comptages "aujourd'hui" (déjà supportés par le repository).
+     */
+    public MessageStatsResponse getMessageStats(UUID userId) {
+        userService.findByIdOrThrow(userId);
+
+        List<Object[]> rows = messageRepository.countMessagesByDirectionAndStatus(userId);
+
+        long totalSent = 0;
+        long totalReceived = 0;
+        long totalFailed = 0;
+        long totalDelivered = 0;
+
+        for (Object[] row : rows) {
+            MessageDirection direction = (MessageDirection) row[0];
+            MessageStatus status = (MessageStatus) row[1];
+            long count = (Long) row[2];
+
+            if (direction == MessageDirection.OUTBOUND) {
+                totalSent += count;
+                if (status == MessageStatus.DELIVERED) {
+                    totalDelivered += count;
+                }
+            } else if (direction == MessageDirection.INBOUND) {
+                totalReceived += count;
+            }
+
+            if (status == MessageStatus.FAILED) {
+                totalFailed += count;
+            }
+        }
+
+        Instant startOfDay = LocalDate.now(ZoneOffset.UTC).atStartOfDay(ZoneOffset.UTC).toInstant();
+        long sentToday = messageRepository.countSentToday(userId, startOfDay);
+        long receivedToday = messageRepository.countReceivedToday(userId, startOfDay);
+
+        return new MessageStatsResponse(totalSent, totalReceived, totalFailed, totalDelivered, sentToday, receivedToday);
     }
 
     private <E extends Enum<E>> E parseEnumOrNull(String rawValue, Class<E> enumType, String fieldName) {

@@ -3,6 +3,7 @@ package TNB.SmsGateway.controller;
 import TNB.SmsGateway.dto.request.SendBulkMessageRequest;
 import TNB.SmsGateway.dto.request.SendMessageRequest;
 import TNB.SmsGateway.dto.response.MessageResponse;
+import TNB.SmsGateway.dto.response.MessageStatsResponse;
 import TNB.SmsGateway.dto.common.PageResponse;
 import TNB.SmsGateway.entity.Message;
 import TNB.SmsGateway.security.UserPrincipal;
@@ -78,6 +79,22 @@ public class MessageController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.accepted().body(responses);
+    }
+
+    /**
+     * Statistiques agrégées pour le Dashboard (mobile).
+     * Placé AVANT /{id} : même si Spring MVC priorise déjà les segments
+     * statiques sur les variables de chemin, on le garde explicite pour
+     * éviter toute ambiguïté de lecture/maintenance future.
+     */
+    @Operation(
+            summary = "Statistiques des messages",
+            description = "Retourne les totaux envoyés/reçus/échoués/livrés ainsi que les compteurs du jour."
+    )
+    @GetMapping("/stats")
+    public ResponseEntity<MessageStatsResponse> getMessageStats(Authentication authentication) {
+        UUID userId = getUserIdFromAuthentication(authentication);
+        return ResponseEntity.ok(messageService.getMessageStats(userId));
     }
 
     @GetMapping("/{id}")
