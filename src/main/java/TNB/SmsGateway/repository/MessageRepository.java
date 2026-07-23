@@ -82,9 +82,9 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
     @Query("SELECT m FROM Message m WHERE m.user = :user " +
             "AND (:direction IS NULL OR m.direction = :direction) " +
             "AND (:status IS NULL OR m.status = :status) " +
-            "AND (:search IS NULL OR LOWER(m.toNumber) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "     OR LOWER(m.fromNumber) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "     OR LOWER(m.body) LIKE LOWER(CONCAT('%', :search, '%'))) " +
+            "AND (:search IS NULL OR LOWER(m.toNumber) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+            "     OR LOWER(m.fromNumber) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
+            "     OR LOWER(m.body) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) " +
             "ORDER BY m.createdAt DESC")
     Page<Message> searchByUser(@Param("user") User user,
                                @Param("direction") MessageDirection direction,
