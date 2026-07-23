@@ -96,7 +96,6 @@ public class Message extends BaseAudit {
         this.attempts = 0;
     }
     // ===== GETTERS & SETTERS =====
-
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
 
