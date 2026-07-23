@@ -38,26 +38,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String authHeader = request.getHeader("Authorization");
         String path = request.getRequestURI();
 
-        log.info("🔍 Request: {} {} - Auth: {}", request.getMethod(), path, authHeader != null ? "présent" : "absent");
+//        log.info("🔍 Request: {} {} - Auth: {}", request.getMethod(), path, authHeader != null ? "présent" : "absent");
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            log.info("🔍 Token: {}...", token.substring(0, Math.min(20, token.length())));
+//            log.info("🔍 Token: {}...", token.substring(0, Math.min(20, token.length())));
 
             // Ignorer si c'est une ApiKey
             if (!token.startsWith("tnb_")) {
                 try {
-                    log.info("🔍 Validation du token JWT...");
+//                    log.info("🔍 Validation du token JWT...");
 
                     if (jwtUtils.isValidToken(token)) {
                         UUID userId = jwtUtils.getUserIdFromToken(token);
                         String email = jwtUtils.getEmailFromToken(token);
 
-                        log.info("✅ Token valide: userId={}, email={}", userId, email);
+//                        log.info("✅ Token valide: userId={}, email={}", userId, email);
 
                         // 🔥 Charger l'utilisateur via CustomUserDetailsService
                         UserDetails userDetails = userDetailsService.loadUserById(userId);
-                        log.info("✅ UserDetails chargé: {}", userDetails.getUsername());
+//                        log.info("✅ UserDetails chargé: {}", userDetails.getUsername());
 
                         // 🔥 Créer l'authentification Spring
                         UsernamePasswordAuthenticationToken authentication =
@@ -70,7 +70,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                        log.info("✅ Authentification définie pour l'utilisateur: {}", email);
+//                        log.info("✅ Authentification définie pour l'utilisateur: {}", email);
                     } else {
                         log.warn("❌ Token JWT invalide pour {}", path);
                     }

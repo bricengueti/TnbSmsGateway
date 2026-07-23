@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Repository
@@ -21,7 +22,8 @@ public interface DeviceSimRepository extends JpaRepository<DeviceSim, UUID> {
     Optional<DeviceSim> findByDeviceAndSlotIndex(Device device, Integer slotIndex);
 
     @Query("SELECT s FROM DeviceSim s WHERE s.device = :device AND s.isActive = true")
-    List<DeviceSim> findActiveSims(@Param("device") Device device);
+    Set<DeviceSim> findActiveSims(@Param("device") Device device);
+
 
     // 🔥 SUPPRIMÉ: findSimsWithQuota (JPQL ne peut plus comparer dailySmsSent < dailySmsQuota,
     // ce dernier étant désormais un String pouvant valoir "ILLIMITE").
