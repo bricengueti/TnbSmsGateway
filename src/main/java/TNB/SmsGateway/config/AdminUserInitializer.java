@@ -40,7 +40,6 @@ public class AdminUserInitializer implements CommandLineRunner {
                     admin.setCompanyName("Administration");
                     userRepository.save(admin);
                     log.info("🔧 Compte admin créé par défaut: {}", adminEmail);
-                }
-        );
+                });
     }
 }
