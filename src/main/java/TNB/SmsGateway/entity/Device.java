@@ -40,10 +40,20 @@ public class Device extends BaseAudit {
     // ✅ Cadence par défaut du téléphone (utilisée si aucune SIM
     // individuelle ne surcharge ces valeurs)
     @Column(name = "dispatch_min_delay_sec", nullable = false)
-    private Integer dispatchMinDelaySec = 8;
+    private Integer dispatchMinDelaySec = 3;
 
     @Column(name = "dispatch_max_delay_sec", nullable = false)
-    private Integer dispatchMaxDelaySec = 25;
+    private Integer dispatchMaxDelaySec = 15;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "device_type")
+    private DeviceType type = DeviceType.PERSONAL;
+
+    public DeviceType getType() {
+        return type != null ? type : DeviceType.PERSONAL;   // défensif, cf. remarque ddl-auto=update
+    }
+    public void setType(DeviceType type) { this.type = type; }
+
 
     public Device() {
         super();

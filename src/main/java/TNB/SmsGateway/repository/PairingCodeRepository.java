@@ -1,5 +1,6 @@
 package TNB.SmsGateway.repository;
 
+import TNB.SmsGateway.entity.DeviceType;
 import TNB.SmsGateway.entity.PairingCode;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -20,6 +21,10 @@ public interface PairingCodeRepository extends JpaRepository<PairingCode, UUID> 
      * Utilisé pour l'affichage dashboard et pour la régénération
      * (révoquer l'ancien avant d'en créer un nouveau).
      */
-    @Query("SELECT pc FROM PairingCode pc WHERE pc.user.id = :userId AND pc.revokedAt IS NULL")
-    Optional<PairingCode> findActiveByUserId(@Param("userId") UUID userId);
+    @Query("SELECT pc FROM PairingCode pc WHERE pc.user.id = :userId " +
+            "AND pc.targetType = :targetType AND pc.revokedAt IS NULL")
+    Optional<PairingCode> findActiveByUserIdAndTargetType(
+            @Param("userId") UUID userId,
+            @Param("targetType") DeviceType targetType
+    );
 }

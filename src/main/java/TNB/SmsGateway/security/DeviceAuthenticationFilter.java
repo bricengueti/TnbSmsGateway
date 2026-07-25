@@ -132,4 +132,7 @@ public class DeviceAuthenticationFilter extends OncePerRequestFilter {
 
         filterChain.doFilter(request, response);
     }
+
+    public static class ApiKeyPrincipal {
+    }
 }

@@ -27,6 +27,15 @@ public class PairingCode extends BaseAudit {
     @Column(name = "last_used_at")
     private Instant lastUsedAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_type")
+    private DeviceType targetType = DeviceType.PERSONAL;
+
+    public DeviceType getTargetType() {
+        return targetType != null ? targetType : DeviceType.PERSONAL;
+    }
+    public void setTargetType(DeviceType targetType) { this.targetType = targetType; }
+
     public PairingCode() {
         super();
     }

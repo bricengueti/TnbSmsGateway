@@ -28,6 +28,12 @@ public class User extends BaseAudit {
     @Column(name = "first_login")
     private Boolean firstLogin = true;
 
+    @Column(name = "is_admin", nullable = false)
+    private boolean isAdmin = false;
+
+    public boolean isAdmin() { return isAdmin; }
+    public void setAdmin(boolean admin) { this.isAdmin = admin; }
+
     // Constructeurs
     public User() {
         super();

@@ -1,33 +1,32 @@
 package TNB.SmsGateway.security;
 
-import TNB.SmsGateway.entity.User;
+import TNB.SmsGateway.entity.ApiKey;
+import TNB.SmsGateway.entity.ApiKeyScope;
+import TNB.SmsGateway.entity.RoutingMode;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.UUID;
 
-public class UserPrincipal implements UserDetails {
+public class ApiKeyPrincipal implements UserDetails {
 
-    private final UUID id;
-    private final String email;
+    private final UUID userId;
+    private final UUID apiKeyId;
+    private final RoutingMode routingMode;
+    private final ApiKeyScope scope;
 
-    private final boolean isAdmin;   // ✅ ajouté
-
-    public UserPrincipal(User user) {
-        this.id = user.getId();
-        this.email = user.getEmail();
-        this.isAdmin = user.isAdmin();   // ✅ ajouté
+    public ApiKeyPrincipal(ApiKey apiKey) {
+        this.userId = apiKey.getUser().getId();
+        this.apiKeyId = apiKey.getId();
+        this.routingMode = apiKey.getRoutingMode();
+        this.scope = apiKey.getScope();
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        if (isAdmin) {
-            return List.of(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_ADMIN"));
-        }
         return Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
     }
 
@@ -38,7 +37,7 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public String getUsername() {
-        return email;
+        return userId.toString();
     }
 
     @Override
@@ -61,11 +60,19 @@ public class UserPrincipal implements UserDetails {
         return true;
     }
 
-    public UUID getId() {
-        return id;
+    public UUID getUserId() {
+        return userId;
     }
 
-    public String getEmail() {
-        return email;
+    public UUID getApiKeyId() {
+        return apiKeyId;
+    }
+
+    public RoutingMode getRoutingMode() {
+        return routingMode;
+    }
+
+    public ApiKeyScope getScope() {
+        return scope;
     }
 }

@@ -75,6 +75,15 @@ public class Message extends BaseAudit {
     @Column(name = "webhook_delivered_at")
     private Instant webhookDeliveredAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "routing_mode")
+    private RoutingMode routingMode = RoutingMode.OWN_DEVICES;
+
+    public RoutingMode getRoutingMode() {
+        return routingMode != null ? routingMode : RoutingMode.OWN_DEVICES;
+    }
+    public void setRoutingMode(RoutingMode routingMode) { this.routingMode = routingMode; }
+
     // ===== CONSTRUCTEURS =====
 
     public Message() {

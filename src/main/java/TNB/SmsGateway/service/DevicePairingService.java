@@ -81,6 +81,7 @@ public class DevicePairingService {
                 : "Téléphone " + country.getCode();
 
         Device device = new Device(pairingCode.getUser(), country, label);
+        device.setType(pairingCode.getTargetType());
         device.setStatus(DeviceStatus.DISABLED); // passera ONLINE à la 1ère connexion WebSocket réussie
         device.setPairedAt(Instant.now());
 
@@ -99,7 +100,8 @@ public class DevicePairingService {
         return new DevicePairResponse(
                 device.getId().toString(),
                 secretToken,
-                device.getStatus().name()
+                device.getStatus().name(),
+                device.getType().name()
         );
     }
 

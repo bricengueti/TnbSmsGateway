@@ -7,6 +7,7 @@ import TNB.SmsGateway.entity.*;
 import TNB.SmsGateway.exception.BusinessException;
 import TNB.SmsGateway.exception.message.OperatorCountryMismatchException;
 import TNB.SmsGateway.repository.MessageRepository;
+import TNB.SmsGateway.security.RoutingContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -26,22 +27,24 @@ public class MessageService {
     private final ReferenceService referenceService;
     private final UserService userService;
     private final SmsDispatchScheduler smsDispatchScheduler;
+    private final ApiKeyQuotaService apiKeyQuotaService;   // ✅ ajouté
 
     public MessageService(MessageRepository messageRepository,
                           MessageRouterService messageRouter,
                           ReferenceService referenceService,
                           UserService userService,
-                          SmsDispatchScheduler smsDispatchScheduler) {
+                          SmsDispatchScheduler smsDispatchScheduler,
+                          ApiKeyQuotaService apiKeyQuotaService) {   // ✅ ajouté
         this.messageRepository = messageRepository;
         this.messageRouter = messageRouter;
         this.referenceService = referenceService;
         this.userService = userService;
         this.smsDispatchScheduler = smsDispatchScheduler;
+        this.apiKeyQuotaService = apiKeyQuotaService;   // ✅ ajouté
     }
-
     @Transactional
-    public MessageResponse sendMessage(UUID userId, SendMessageRequest request) {
-        User user = userService.findByIdOrThrow(userId);
+    public MessageResponse sendMessage(RoutingContext ctx, SendMessageRequest request) {
+        User user = userService.findByIdOrThrow(ctx.userId());
 
         String toNumber = request.to();
         if (toNumber == null || !toNumber.startsWith("+") || toNumber.length() < 6 || toNumber.length() > 16) {
@@ -57,6 +60,11 @@ public class MessageService {
             throw new OperatorCountryMismatchException(request.operator(), request.countryCode());
         }
 
+// ✅ ajouté — garde-fou de quota, uniquement pour le mode pool partagé
+        if (ctx.routingMode() == RoutingMode.MANAGED_POOL) {
+            apiKeyQuotaService.checkAndReserve(ctx.apiKeyId());
+        }
+
         if (request.idempotencyKey() != null && !request.idempotencyKey().isEmpty()) {
             Message existing = messageRepository
                     .findByUserAndIdempotencyKey(user, request.idempotencyKey())
@@ -65,6 +73,7 @@ public class MessageService {
                 return toMessageResponse(existing);
             }
         }
+
 
         Message message = new Message();
         message.setUser(user);
@@ -77,17 +86,16 @@ public class MessageService {
         message.setStatus(MessageStatus.PENDING);
         message.setAttempts(0);
         message.setIdempotencyKey(request.idempotencyKey());
+        message.setRoutingMode(ctx.routingMode());   // ✅ nouveau — trace le mode pour la réassignation
 
         message = messageRepository.save(message);
 
-        Device device = messageRouter.findAvailableDevice(userId, request.countryCode(), request.operator());
+        Device device = messageRouter.findAvailableDevice(
+                ctx.userId(), ctx.routingMode(), request.countryCode(), request.operator());
         DeviceSim sim = messageRouter.findAvailableSim(device);
 
         message = messageRouter.dispatchMessage(message, device, sim);
 
-        // ✅ MODIFIÉ : dispatch réel via le scheduler de cadence (délai
-        // min/max effectif de la SIM, surcharge sinon fallback device),
-        // au lieu d'un envoi WebSocket immédiat.
         int minDelaySec = sim.resolveEffectiveMinDelaySec();
         int maxDelaySec = sim.resolveEffectiveMaxDelaySec();
 
@@ -234,6 +242,7 @@ public class MessageService {
                 message.getCountryCode(),
                 message.getOperatorCode(),
                 message.getStatus().name(),
+                message.getRoutingMode().name(),   // ✅ ajouté — même position que dans le record
                 message.getAttempts(),
                 message.getErrorReason(),
                 message.getDevice() != null ? message.getDevice().getId().toString() : null,

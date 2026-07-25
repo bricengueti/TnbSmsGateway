@@ -67,6 +67,32 @@ public interface DeviceRepository extends JpaRepository<Device, UUID> {
         return findAvailableDevices(userId, countryCode, operatorCode).stream().findFirst();
     }
 
+
+    @Query("SELECT DISTINCT d FROM Device d " +
+            "JOIN d.sims s " +
+            "WHERE d.type = 'POOL' " +
+            "AND d.country.code = :countryCode " +
+            "AND s.operator.code = :operatorCode " +
+            "AND d.status = 'ONLINE' " +
+            "AND s.isActive = true " +
+            "AND d.revokedAt IS NULL")
+    List<Device> findCandidatePoolDevices(@Param("countryCode") String countryCode,
+                                          @Param("operatorCode") String operatorCode);
+
+    default List<Device> findAvailablePoolDevices(String countryCode, String operatorCode) {
+        return findCandidatePoolDevices(countryCode, operatorCode).stream()
+                .filter(device -> device.getSims().stream()
+                        .anyMatch(sim -> operatorCode.equals(sim.getOperator().getCode())
+                                && Boolean.TRUE.equals(sim.getIsActive())
+                                && sim.hasQuota()))
+                .sorted(Comparator.comparingInt(device -> device.getSims().stream()
+                        .filter(sim -> operatorCode.equals(sim.getOperator().getCode()))
+                        .mapToInt(sim -> sim.getDailySmsSent() != null ? sim.getDailySmsSent() : 0)
+                        .min()
+                        .orElse(0)))
+                .toList();
+    }
+
     // ===== PAIRING =====
     // ❌ Supprimés : updatePairingCode(...) et markAsPaired(...)
     // Le pairing crée désormais directement une nouvelle ligne Device
