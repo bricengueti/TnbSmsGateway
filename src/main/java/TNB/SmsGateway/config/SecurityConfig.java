@@ -69,6 +69,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/v1/messages/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/v1/coverage").authenticated()
 
+                        // ===== ADMIN =====
+                        .requestMatchers("/admin/**").hasRole("ADMIN")   // ✅ ajouté
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
