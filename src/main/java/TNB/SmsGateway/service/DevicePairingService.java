@@ -5,6 +5,7 @@ import TNB.SmsGateway.dto.response.DevicePairResponse;
 import TNB.SmsGateway.entity.Country;
 import TNB.SmsGateway.entity.Device;
 import TNB.SmsGateway.entity.DeviceStatus;
+import TNB.SmsGateway.entity.DeviceType;
 import TNB.SmsGateway.entity.PairingCode;
 import TNB.SmsGateway.exception.BusinessException;
 import TNB.SmsGateway.exception.device.InvalidPairingCodeException;
@@ -31,6 +32,10 @@ import java.util.UUID;
  *    de la SIM → un NOUVEAU Device est créé à cet instant précis
  * 2. Le même code peut être réutilisé pour pairer plusieurs devices
  * 3. WebSocket: vérification du secret token (BCrypt) à la connexion
+ * 4. Plafond: si le code vise un device PERSONAL, le nombre de devices
+ *    personnels déjà pairés par ce user est vérifié contre son UserQuota
+ *    (PlanType.PERSONAL) avant toute création — pas de plafond pour les
+ *    devices POOL (contribution au marketplace, non limitée ici).
  */
 @Service
 public class DevicePairingService {
@@ -40,13 +45,16 @@ public class DevicePairingService {
     private final DeviceRepository deviceRepository;
     private final PairingCodeRepository pairingCodeRepository;
     private final ReferenceService referenceService;
+    private final UserQuotaService userQuotaService;
 
     public DevicePairingService(DeviceRepository deviceRepository,
                                 PairingCodeRepository pairingCodeRepository,
-                                ReferenceService referenceService) {
+                                ReferenceService referenceService,
+                                UserQuotaService userQuotaService) {
         this.deviceRepository = deviceRepository;
         this.pairingCodeRepository = pairingCodeRepository;
         this.referenceService = referenceService;
+        this.userQuotaService = userQuotaService;
     }
 
     /**
@@ -54,16 +62,16 @@ public class DevicePairingService {
      * ÉTAPES:
      * 1. Hacher le code reçu (déterministe) et le retrouver en base
      * 2. Vérifier qu'il n'est pas révoqué
-     * 3. Résoudre le pays depuis le countryIso détecté par l'app Android
-     * 4. Créer le Device (status DISABLED, en attente de 1ère connexion WS)
-     * 5. Générer le secretToken, le hacher en BCrypt (cohérent avec
+     * 3. Si targetType=PERSONAL, vérifier le plafond de devices du user
+     * 4. Résoudre le pays depuis le countryIso détecté par l'app Android
+     * 5. Créer le Device (status DISABLED, en attente de 1ère connexion WS)
+     * 6. Générer le secretToken, le hacher en BCrypt (cohérent avec
      *    DeviceWebSocketHandler.verifySecretToken)
-     * 6. Marquer le code de connexion comme utilisé (traçabilité, pas
+     * 7. Marquer le code de connexion comme utilisé (traçabilité, pas
      *    d'invalidation — il reste réutilisable pour d'autres devices)
      */
     @Transactional
     public DevicePairResponse pairDevice(DevicePairRequest request) {
-        // Dans DevicePairingService.pairDevice() :
         String pairingCodeHash = SecurityUtils.hashSha256(request.pairingCode());
 
         PairingCode pairingCode = pairingCodeRepository.findByCodeHash(pairingCodeHash)
@@ -71,6 +79,11 @@ public class DevicePairingService {
 
         if (pairingCode.isRevoked()) {
             throw new InvalidPairingCodeException();
+        }
+
+        // Plafond de devices — uniquement pertinent pour les devices personnels (BYOD)
+        if (pairingCode.getTargetType() == DeviceType.PERSONAL) {
+            userQuotaService.checkDeviceLimitOrThrow(pairingCode.getUser().getId());
         }
 
         Country country = referenceService.findCountryByCode(request.countryIso())

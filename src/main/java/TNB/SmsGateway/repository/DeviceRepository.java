@@ -152,4 +152,8 @@ public interface DeviceRepository extends JpaRepository<Device, UUID> {
     @Query("UPDATE Device d SET d.dispatchMinDelaySec = :minSec, d.dispatchMaxDelaySec = :maxSec WHERE d.id = :deviceId")
     void updatePacing(@Param("deviceId") UUID deviceId, @Param("minSec") Integer minSec, @Param("maxSec") Integer maxSec);
 
+    @Query("SELECT COUNT(d) FROM Device d WHERE d.user.id = :userId " +
+            "AND d.type = 'PERSONAL' AND d.revokedAt IS NULL")
+    long countPersonalDevicesByUserId(@Param("userId") UUID userId);
+
 }

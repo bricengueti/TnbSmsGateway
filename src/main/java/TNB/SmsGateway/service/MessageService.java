@@ -27,20 +27,20 @@ public class MessageService {
     private final ReferenceService referenceService;
     private final UserService userService;
     private final SmsDispatchScheduler smsDispatchScheduler;
-    private final ApiKeyQuotaService apiKeyQuotaService;   // ✅ ajouté
+    private final UserQuotaService userQuotaService;   // ✅ ajouté
 
     public MessageService(MessageRepository messageRepository,
                           MessageRouterService messageRouter,
                           ReferenceService referenceService,
                           UserService userService,
                           SmsDispatchScheduler smsDispatchScheduler,
-                          ApiKeyQuotaService apiKeyQuotaService) {   // ✅ ajouté
+                          UserQuotaService userQuotaService) {   // ✅ ajouté
         this.messageRepository = messageRepository;
         this.messageRouter = messageRouter;
         this.referenceService = referenceService;
         this.userService = userService;
         this.smsDispatchScheduler = smsDispatchScheduler;
-        this.apiKeyQuotaService = apiKeyQuotaService;   // ✅ ajouté
+        this.userQuotaService = userQuotaService;   // ✅ ajouté
     }
     @Transactional
     public MessageResponse sendMessage(RoutingContext ctx, SendMessageRequest request) {
@@ -62,7 +62,7 @@ public class MessageService {
 
 // ✅ ajouté — garde-fou de quota, uniquement pour le mode pool partagé
         if (ctx.routingMode() == RoutingMode.MANAGED_POOL) {
-            apiKeyQuotaService.checkAndReserve(ctx.apiKeyId());
+            userQuotaService.consumeCredit(ctx.userId());   // ✅ basé sur le user, plus sur l'apiKeyId
         }
 
         if (request.idempotencyKey() != null && !request.idempotencyKey().isEmpty()) {

@@ -1,14 +1,14 @@
 package TNB.SmsGateway.controller;
 
-import TNB.SmsGateway.dto.request.AssignPlanRequest;
-import TNB.SmsGateway.dto.request.PlanRequest;
-import TNB.SmsGateway.dto.request.QuotaOverrideRequest;
-import TNB.SmsGateway.dto.response.ManagedApiKeyResponse;
+import TNB.SmsGateway.dto.request.*;
 import TNB.SmsGateway.dto.response.PlanResponse;
+import TNB.SmsGateway.dto.response.UserQuotaResponse;
 import TNB.SmsGateway.dto.common.ApiResponse;
-import TNB.SmsGateway.service.AdminApiKeyService;
+import TNB.SmsGateway.entity.PlanType;
+import TNB.SmsGateway.service.AdminQuotaService;
 import TNB.SmsGateway.service.PlanService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -25,66 +25,78 @@ import java.util.UUID;
 public class AdminController {
 
     private final PlanService planService;
-    private final AdminApiKeyService adminApiKeyService;
+    private final AdminQuotaService adminQuotaService;
 
-    public AdminController(PlanService planService, AdminApiKeyService adminApiKeyService) {
+    public AdminController(PlanService planService, AdminQuotaService adminQuotaService) {
         this.planService = planService;
-        this.adminApiKeyService = adminApiKeyService;
+        this.adminQuotaService = adminQuotaService;
     }
 
     // ===== PACKS =====
 
-    @Operation(summary = "Créer un pack", description = "Crée un nouveau pack tarifaire (ex: Starter, " +
-            "Pro, Illimité) qui pourra ensuite être assigné à des clés API en mode pool partagé.")
+    @Operation(summary = "Créer un pack", description = "Crée un pack POOL (crédits SMS prépayés) ou " +
+            "PERSONAL (plafond de devices).")
     @PostMapping("/plans")
     public ResponseEntity<PlanResponse> createPlan(@Valid @RequestBody PlanRequest request) {
         return ResponseEntity.status(201).body(planService.createPlan(request));
     }
 
-    @Operation(summary = "Lister tous les packs", description = "Retourne tous les packs, actifs et " +
-            "inactifs, pour la vue d'administration.")
+    @Operation(summary = "Lister tous les packs")
     @GetMapping("/plans")
     public ResponseEntity<List<PlanResponse>> listPlans() {
         return ResponseEntity.ok(planService.listAllPlans());
     }
 
-    @Operation(summary = "Désactiver un pack", description = "Retire le pack de la liste proposée aux " +
-            "nouveaux clients. Les clients qui l'ont déjà assigné conservent leur quota inchangé.")
+    @Operation(summary = "Désactiver un pack", description = "Retire le pack de la vente. Les " +
+            "utilisateurs qui l'ont déjà reçu conservent leur solde/plafond inchangé.")
     @PostMapping("/plans/{id}/deactivate")
     public ResponseEntity<ApiResponse> deactivatePlan(@PathVariable UUID id) {
         planService.deactivatePlan(id);
         return ResponseEntity.ok(new ApiResponse("Pack désactivé", true));
     }
 
-    // ===== QUOTAS / CLÉS MANAGED_POOL =====
+    // ===== QUOTAS =====
 
-    @Operation(summary = "Vue d'ensemble des clés en mode pool partagé", description = "Liste toutes " +
-            "les clés API en routingMode=MANAGED_POOL, avec leur pack assigné, leur consommation du " +
-            "mois en cours et le pourcentage utilisé — pour le pilotage admin.")
-    @GetMapping("/api-keys/managed")
-    public ResponseEntity<List<ManagedApiKeyResponse>> listManagedApiKeys() {
-        return ResponseEntity.ok(adminApiKeyService.listManagedApiKeys());
-    }
-
-    @Operation(summary = "Assigner un pack à une clé API", description = "Applique les limites du pack " +
-            "choisi à cette clé (routingMode doit être MANAGED_POOL). Écrase toute limite précédemment " +
-            "définie manuellement sur cette clé.")
-    @PostMapping("/api-keys/{id}/assign-plan")
-    public ResponseEntity<ManagedApiKeyResponse> assignPlan(
-            @PathVariable UUID id,
-            @Valid @RequestBody AssignPlanRequest request
+    @Operation(summary = "Vue d'ensemble des quotas", description = "Liste tous les quotas d'un type " +
+            "donné (POOL = crédits SMS, PERSONAL = plafond devices), pour le pilotage admin.")
+    @GetMapping("/quotas")
+    public ResponseEntity<List<UserQuotaResponse>> listQuotas(
+            @Parameter(description = "Type de quota à lister", example = "POOL")
+            @RequestParam PlanType type
     ) {
-        return ResponseEntity.ok(adminApiKeyService.assignPlan(id, request.planId()));
+        return ResponseEntity.ok(adminQuotaService.listQuotas(type));
     }
 
-    @Operation(summary = "Ajuster manuellement le quota d'une clé", description = "Geste commercial ou " +
-            "dépannage ponctuel — surcharge la limite ou le compteur en dehors de tout pack. Le pack " +
-            "assigné (s'il existe) n'est pas modifié, seule cette clé est affectée.")
-    @PatchMapping("/api-keys/{id}/quota-override")
-    public ResponseEntity<ManagedApiKeyResponse> overrideQuota(
-            @PathVariable UUID id,
+    @Operation(summary = "Recharger des crédits SMS (pool prépayé)", description = "Ajoute des crédits " +
+            "au solde existant — jamais un reset. Soit via un pack (planId), soit un montant libre " +
+            "(credits). Le solde survit à toute régénération de clé API du client.")
+    @PostMapping("/users/{userId}/quota/pool/topup")
+    public ResponseEntity<UserQuotaResponse> topUpPool(
+            @PathVariable UUID userId,
+            @Valid @RequestBody TopUpPoolRequest request
+    ) {
+        return ResponseEntity.ok(adminQuotaService.topUpPool(userId, request));
+    }
+
+    @Operation(summary = "Assigner un pack de devices (PERSONAL)", description = "Définit le plafond " +
+            "de devices personnels autorisés pour ce compte. Remplace la limite précédente.")
+    @PostMapping("/users/{userId}/quota/personal/assign-plan")
+    public ResponseEntity<UserQuotaResponse> assignPersonalPlan(
+            @PathVariable UUID userId,
+            @Valid @RequestBody AssignPersonalPlanRequest request
+    ) {
+        return ResponseEntity.ok(adminQuotaService.assignPersonalPlan(userId, request.planId()));
+    }
+
+    @Operation(summary = "Ajuster manuellement un quota", description = "Geste commercial, " +
+            "remboursement ou correction — définit des valeurs exactes (pas d'addition). " +
+            "Le champ pertinent dépend du type: 'credits' pour POOL, 'maxDevices' pour PERSONAL.")
+    @PatchMapping("/users/{userId}/quota/{type}/override")
+    public ResponseEntity<UserQuotaResponse> overrideQuota(
+            @PathVariable UUID userId,
+            @PathVariable PlanType type,
             @Valid @RequestBody QuotaOverrideRequest request
     ) {
-        return ResponseEntity.ok(adminApiKeyService.overrideQuota(id, request));
+        return ResponseEntity.ok(adminQuotaService.overrideQuota(userId, type, request));
     }
 }
