@@ -1,6 +1,7 @@
 package TNB.SmsGateway.repository;
 
 import TNB.SmsGateway.entity.Plan;
+import TNB.SmsGateway.entity.PlanType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -10,4 +11,6 @@ import java.util.UUID;
 @Repository
 public interface PlanRepository extends JpaRepository<Plan, UUID> {
     List<Plan> findByActiveTrue();
+
+    List<Plan> findByActiveTrueAndType(PlanType type);
 }
