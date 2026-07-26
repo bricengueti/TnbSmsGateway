@@ -1,6 +1,7 @@
 package TNB.SmsGateway.payment;
 
 import TNB.SmsGateway.service.PurchaseService;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 /**
@@ -14,7 +15,9 @@ public class PurchaseWebhookDispatcher {
 
     private final PurchaseService purchaseService;   // ✅ voir étape 62
 
-    public PurchaseWebhookDispatcher(PurchaseService purchaseService) {
+    // ✅ @Lazy : Spring injecte un proxy au lieu de construire immédiatement
+    // PurchaseService ici, ce qui casse le cycle de création des beans.
+    public PurchaseWebhookDispatcher(@Lazy PurchaseService purchaseService) {
         this.purchaseService = purchaseService;
     }
 

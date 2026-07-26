@@ -13,9 +13,8 @@ public class Plan extends BaseAudit {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "type")   // ✅ nullable = false retiré
     private PlanType type;
-
     // Pertinent pour type=POOL : nombre de crédits SMS vendus avec ce pack (null = illimité)
     @Column(name = "sms_credits")
     private Integer smsCredits;
