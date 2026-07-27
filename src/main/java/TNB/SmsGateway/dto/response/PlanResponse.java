@@ -9,11 +9,11 @@ public record PlanResponse(
         String name,
         String description,
 
-        @Schema(description = "Type de pack", allowableValues = {"POOL", "PERSONAL"})
+        @Schema(allowableValues = {"POOL", "PERSONAL"})
         String type,
 
-        @Schema(description = "Crédits SMS inclus (POOL), null si illimité ou si type=PERSONAL")
-        Integer smsCredits,
+        @Schema(description = "Limite mensuelle de SMS (POOL), null si illimité ou si type=PERSONAL")
+        Integer monthlySmsLimit,
 
         @Schema(description = "Plafond de devices (PERSONAL), null si illimité ou si type=POOL")
         Integer maxDevices,

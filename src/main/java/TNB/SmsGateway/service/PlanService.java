@@ -32,7 +32,7 @@ public class PlanService {
         PlanType type = parsePlanType(request.type());
 
         Plan plan = new Plan(request.name(), request.description(), type,
-                request.smsCredits(), request.maxDevices(), null, request.price());
+                request.monthlySmsLimit(), request.maxDevices(), request.price());
         return toResponse(planRepository.save(plan));
     }
 
@@ -68,7 +68,7 @@ public class PlanService {
     private PlanResponse toResponse(Plan plan) {
         return new PlanResponse(
                 plan.getId().toString(), plan.getName(), plan.getDescription(),
-                plan.getType().name(), plan.getSmsCredits(), plan.getMaxDevices(),
+                plan.getType().name(), plan.getMonthlySmsLimit(), plan.getMaxDevices(),
                 plan.getPrice(), plan.isActive()
         );
     }

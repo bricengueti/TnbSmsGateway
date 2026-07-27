@@ -13,19 +13,19 @@ public record PlanRequest(
         @NotBlank(message = "Le nom du pack est obligatoire")
         String name,
 
-        @Schema(description = "Description courte", example = "5 000 crédits SMS")
+        @Schema(description = "Description courte", example = "5 000 SMS par mois")
         String description,
 
-        @Schema(description = "Type de pack. POOL = crédits SMS prépayés pour le pool partagé. " +
+        @Schema(description = "Type de pack. POOL = limite mensuelle de SMS pour le pool partagé. " +
                 "PERSONAL = plafond de devices pour les clients BYOD.",
                 allowableValues = {"POOL", "PERSONAL"}, example = "POOL")
         @NotNull(message = "Le type de pack est obligatoire")
         String type,
 
-        @Schema(description = "Nombre de crédits SMS inclus dans ce pack (type=POOL uniquement). " +
-                "Laisser vide pour un pack illimité.", example = "5000")
-        @Positive(message = "Les crédits doivent être positifs")
-        Integer smsCredits,
+        @Schema(description = "Limite mensuelle de SMS (type=POOL uniquement). Laisser vide pour un " +
+                "pack illimité.", example = "5000")
+        @Positive(message = "La limite doit être positive")
+        Integer monthlySmsLimit,
 
         @Schema(description = "Nombre maximum de devices autorisés (type=PERSONAL uniquement). " +
                 "Laisser vide pour un pack sans limite de devices.", example = "5")
