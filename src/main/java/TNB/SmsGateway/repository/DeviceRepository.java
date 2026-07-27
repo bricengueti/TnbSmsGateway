@@ -2,6 +2,7 @@ package TNB.SmsGateway.repository;
 
 import TNB.SmsGateway.entity.Device;
 import TNB.SmsGateway.entity.DeviceStatus;
+import TNB.SmsGateway.entity.DeviceType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -156,4 +157,8 @@ public interface DeviceRepository extends JpaRepository<Device, UUID> {
             "AND d.type = 'PERSONAL' AND d.revokedAt IS NULL")
     long countPersonalDevicesByUserId(@Param("userId") UUID userId);
 
+    long countByTypeAndRevokedAtIsNull(DeviceType type);
+    long countByStatusAndRevokedAtIsNull(DeviceStatus status);
+    long countByRevokedAtIsNotNull();
+    long countByUserId(UUID userId);
 }

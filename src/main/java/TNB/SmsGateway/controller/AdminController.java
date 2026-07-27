@@ -1,10 +1,13 @@
 package TNB.SmsGateway.controller;
 
 import TNB.SmsGateway.dto.request.*;
-import TNB.SmsGateway.dto.response.PlanResponse;
-import TNB.SmsGateway.dto.response.UserQuotaResponse;
+import TNB.SmsGateway.dto.response.*;
 import TNB.SmsGateway.dto.common.ApiResponse;
+import TNB.SmsGateway.entity.DeviceStatus;
+import TNB.SmsGateway.entity.DeviceType;
 import TNB.SmsGateway.entity.PlanType;
+import TNB.SmsGateway.entity.RoutingMode;
+import TNB.SmsGateway.service.AdminPlatformService;
 import TNB.SmsGateway.service.AdminQuotaService;
 import TNB.SmsGateway.service.PlanService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,10 +29,13 @@ public class AdminController {
 
     private final PlanService planService;
     private final AdminQuotaService adminQuotaService;
+    private final AdminPlatformService adminPlatformService;   // ✅ ajouté au constructeur existant
 
-    public AdminController(PlanService planService, AdminQuotaService adminQuotaService) {
+
+    public AdminController(PlanService planService, AdminQuotaService adminQuotaService, AdminPlatformService adminPlatformService) {
         this.planService = planService;
         this.adminQuotaService = adminQuotaService;
+        this.adminPlatformService = adminPlatformService;
     }
 
     // ===== PACKS =====
@@ -97,5 +103,71 @@ public class AdminController {
             @Valid @RequestBody QuotaOverrideRequest request
     ) {
         return ResponseEntity.ok(adminQuotaService.overrideQuota(userId, type, request));
+    }
+
+// ===== PLATEFORME (vue d'ensemble) =====
+
+    @Operation(summary = "Statistiques globales", description = "Vue d'ensemble de la plateforme : " +
+            "utilisateurs, devices, clés API, messages envoyés.")
+    @GetMapping("/stats")
+    public ResponseEntity<AdminStatsResponse> getStats() {
+        return ResponseEntity.ok(adminPlatformService.getGlobalStats());
+    }
+
+// ===== USERS =====
+
+    @Operation(summary = "Lister tous les utilisateurs")
+    @GetMapping("/users")
+    public ResponseEntity<List<AdminUserResponse>> listUsers() {
+        return ResponseEntity.ok(adminPlatformService.listUsers());
+    }
+
+    @Operation(summary = "Détail d'un utilisateur", description = "Devices, clés API et quotas (POOL/PERSONAL) du compte.")
+    @GetMapping("/users/{id}")
+    public ResponseEntity<AdminUserDetailResponse> getUserDetail(@PathVariable UUID id) {
+        return ResponseEntity.ok(adminPlatformService.getUserDetail(id));
+    }
+
+    @Operation(summary = "Suspendre/réactiver un compte")
+    @PatchMapping("/users/{id}/status")
+    public ResponseEntity<AdminUserResponse> updateUserStatus(
+            @PathVariable UUID id, @Valid @RequestBody UpdateUserStatusRequest request
+    ) {
+        return ResponseEntity.ok(adminPlatformService.updateUserStatus(id, request));
+    }
+
+// ===== DEVICES =====
+
+    @Operation(summary = "Lister tous les devices", description = "Filtrable par type (PERSONAL/POOL) et statut.")
+    @GetMapping("/devices")
+    public ResponseEntity<List<AdminDeviceResponse>> listDevices(
+            @RequestParam(required = false) DeviceType type,
+            @RequestParam(required = false) DeviceStatus status
+    ) {
+        return ResponseEntity.ok(adminPlatformService.listDevices(type, status));
+    }
+
+    @Operation(summary = "Révoquer un device", description = "Révocation forcée par l'admin, peu importe le propriétaire.")
+    @PostMapping("/devices/{id}/revoke")
+    public ResponseEntity<ApiResponse> revokeDevice(@PathVariable UUID id) {
+        adminPlatformService.revokeDevice(id);
+        return ResponseEntity.ok(new ApiResponse("Device révoqué", true));
+    }
+
+// ===== API KEYS =====
+
+    @Operation(summary = "Lister toutes les clés API", description = "Filtrable par routingMode.")
+    @GetMapping("/api-keys")
+    public ResponseEntity<List<AdminApiKeyResponse>> listApiKeys(
+            @RequestParam(required = false) RoutingMode routingMode
+    ) {
+        return ResponseEntity.ok(adminPlatformService.listApiKeys(routingMode));
+    }
+
+    @Operation(summary = "Révoquer une clé API", description = "Révocation forcée par l'admin, peu importe le propriétaire.")
+    @PostMapping("/api-keys/{id}/revoke")
+    public ResponseEntity<ApiResponse> revokeApiKey(@PathVariable UUID id) {
+        adminPlatformService.revokeApiKey(id);
+        return ResponseEntity.ok(new ApiResponse("Clé API révoquée", true));
     }
 }

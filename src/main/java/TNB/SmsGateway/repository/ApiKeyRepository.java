@@ -2,6 +2,7 @@ package TNB.SmsGateway.repository;
 
 import TNB.SmsGateway.entity.ApiKey;
 import TNB.SmsGateway.entity.ApiKeyScope;
+import TNB.SmsGateway.entity.RoutingMode;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -70,4 +71,9 @@ public interface ApiKeyRepository extends JpaRepository<ApiKey, UUID> {
      */
     @Query("SELECT COUNT(a) FROM ApiKey a WHERE a.user.id = :userId AND a.revokedAt IS NULL")
     long countActiveKeysByUser(@Param("userId") UUID userId);
+
+    long countByRoutingMode(RoutingMode routingMode);
+    long countByRevokedAtIsNotNull();
+    long countByUserId(UUID userId);
+    List<ApiKey> findByUserIdOrderByCreatedAtDesc(UUID userId);   // si findByUserId existe déjà, garder l'existant
 }
