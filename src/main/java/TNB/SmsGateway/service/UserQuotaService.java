@@ -11,6 +11,9 @@ import TNB.SmsGateway.repository.UserQuotaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 @Service
@@ -25,27 +28,38 @@ public class UserQuotaService {
     }
 
     /**
-     * SCÉNARIO: Consommer un crédit SMS avant dispatch (routingMode=MANAGED_POOL)
-     * Modèle PRÉPAYÉ : pas de reset périodique, le solde ne baisse qu'à l'usage.
-     * Absence de quota configuré = bloqué par défaut (fail-safe, inchangé depuis la V1).
+     * SCÉNARIO: Consommer une unité de quota avant dispatch (routingMode=MANAGED_POOL)
+     * Modèle CLASSIQUE : reset automatique au changement de mois (comme les SIM/DeviceSim).
+     * Absence de quota configuré = bloqué par défaut (fail-safe, inchangé).
      */
     @Transactional
-    public void consumeCredit(UUID userId) {
+    public void consumeQuota(UUID userId) {
         UserQuota quota = userQuotaRepository.findByUserIdAndType(userId, PlanType.POOL)
                 .orElseThrow(QuotaNotConfiguredException::new);
 
-        if (!quota.hasRemainingCredits()) {
+        resetIfNewPeriod(quota);
+
+        if (!quota.hasRemainingQuota()) {
             throw new QuotaExceededException();
         }
 
-        quota.consumeCredit();
+        quota.incrementUsage();
         userQuotaRepository.save(quota);
+    }
+
+    private void resetIfNewPeriod(UserQuota quota) {
+        Instant now = Instant.now();
+        if (quota.getResetAt() == null || now.isAfter(quota.getResetAt())) {
+            Instant nextReset = LocalDate.now(ZoneOffset.UTC)
+                    .withDayOfMonth(1).plusMonths(1)
+                    .atStartOfDay(ZoneOffset.UTC).toInstant();
+            quota.resetForNewPeriod(nextReset);
+        }
     }
 
     /**
      * SCÉNARIO: Vérifier le plafond de devices avant pairing (targetType=PERSONAL)
-     * Absence de quota PERSONAL configuré = AUCUNE restriction (comportement historique
-     * préservé — contrairement au POOL, ne pas casser les comptes BYOD existants).
+     * Absence de quota PERSONAL configuré = AUCUNE restriction (préserve les comptes BYOD existants).
      */
     public void checkDeviceLimitOrThrow(UUID userId) {
         userQuotaRepository.findByUserIdAndType(userId, PlanType.PERSONAL).ifPresent(quota -> {
@@ -57,14 +71,5 @@ public class UserQuotaService {
                 throw new DeviceLimitExceededException(quota.getMaxDevices());
             }
         });
-    }
-
-    /**
-     * Récupère (ou crée à la volée, non persisté) le quota d'un type pour un user,
-     * utilisé par l'admin pour afficher/ajuster même si rien n'a encore été assigné.
-     */
-    public UserQuota getOrCreateTransient(User user, PlanType type) {
-        return userQuotaRepository.findByUserIdAndType(user.getId(), type)
-                .orElseGet(() -> new UserQuota(user, type));
     }
 }

@@ -1,7 +1,6 @@
 package TNB.SmsGateway.service;
 
 import TNB.SmsGateway.dto.request.QuotaOverrideRequest;
-import TNB.SmsGateway.dto.request.TopUpPoolRequest;
 import TNB.SmsGateway.dto.response.UserQuotaResponse;
 import TNB.SmsGateway.entity.*;
 import TNB.SmsGateway.exception.BusinessException;
@@ -37,36 +36,30 @@ public class AdminQuotaService {
     }
 
     /**
-     * SCÉNARIO: Recharger le solde de crédits POOL (modèle prépayé — ADDITIF, jamais un reset)
+     * SCÉNARIO: Assigner un pack POOL — REMPLACE la limite existante et remet le compteur à zéro
+     * (assignation classique, pas d'addition).
      */
     @Transactional
-    public UserQuotaResponse topUpPool(UUID userId, TopUpPoolRequest request) {
+    public UserQuotaResponse assignPoolPlan(UUID userId, UUID planId) {
         User user = userService.findByIdOrThrow(userId);
-        UserQuota quota = getOrCreate(user, PlanType.POOL);
+        Plan plan = planService.findByIdOrThrow(planId);
 
-        if (request.planId() != null) {
-            Plan plan = planService.findByIdOrThrow(UUID.fromString(request.planId()));
-            if (plan.getType() != PlanType.POOL) {
-                throw new BusinessException("Ce pack n'est pas de type POOL", "PLAN_TYPE_MISMATCH", 400);
-            }
-            quota.setPlan(plan);
-            if (plan.isUnlimitedCredits()) {
-                quota.setUnlimited(true);
-            } else {
-                quota.addCredits(plan.getSmsCredits());
-            }
-        } else if (request.credits() != null) {
-            quota.addCredits(request.credits());
-        } else {
-            throw new BusinessException("Fournir soit planId, soit credits", "MISSING_TOPUP_AMOUNT", 400);
+        if (plan.getType() != PlanType.POOL) {
+            throw new BusinessException("Ce pack n'est pas de type POOL", "PLAN_TYPE_MISMATCH", 400);
         }
+
+        UserQuota quota = getOrCreate(user, PlanType.POOL);
+        quota.setPlan(plan);
+        quota.setUnlimited(plan.isUnlimitedSms());
+        quota.setMonthlyLimit(plan.getMonthlySmsLimit());
+        quota.setSmsSentThisMonth(0);   // ✅ nouvelle période propre à chaque assignation
 
         userQuotaRepository.save(quota);
         return toResponse(quota);
     }
 
     /**
-     * SCÉNARIO: Assigner un pack PERSONAL (plafond de devices) — REMPLACE la limite, n'additionne pas
+     * SCÉNARIO: Assigner un pack PERSONAL (plafond de devices) — REMPLACE la limite.
      */
     @Transactional
     public UserQuotaResponse assignPersonalPlan(UUID userId, UUID planId) {
@@ -92,8 +85,9 @@ public class AdminQuotaService {
         UserQuota quota = getOrCreate(user, type);
 
         if (request.unlimited() != null) quota.setUnlimited(request.unlimited());
-        if (type == PlanType.POOL && request.credits() != null) quota.setSmsCreditsRemaining(request.credits());
+        if (type == PlanType.POOL && request.monthlyLimit() != null) quota.setMonthlyLimit(request.monthlyLimit());
         if (type == PlanType.PERSONAL && request.maxDevices() != null) quota.setMaxDevices(request.maxDevices());
+        if (Boolean.TRUE.equals(request.resetCounter())) quota.setSmsSentThisMonth(0);
 
         userQuotaRepository.save(quota);
         return toResponse(quota);
@@ -115,7 +109,8 @@ public class AdminQuotaService {
                 quota.getType().name(),
                 quota.getPlan() != null ? quota.getPlan().getName() : null,
                 quota.isUnlimited(),
-                quota.getType() == PlanType.POOL ? quota.getSmsCreditsRemaining() : null,
+                quota.getType() == PlanType.POOL ? quota.getSmsSentThisMonth() : null,
+                quota.getType() == PlanType.POOL ? quota.getMonthlyLimit() : null,
                 quota.getType() == PlanType.PERSONAL ? quota.getMaxDevices() : null,
                 deviceCount
         );

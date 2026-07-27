@@ -118,7 +118,7 @@ public class PurchaseService {
         // ✅ Appel direct au service métier — PAS de rôle admin nécessaire ici,
         // c'est un appel interne Spring (bean-à-bean), pas une requête HTTP.
         if (plan.getType() == PlanType.POOL) {
-            adminQuotaService.topUpPool(userId, new TNB.SmsGateway.dto.request.TopUpPoolRequest(plan.getId().toString(), null));
+            adminQuotaService.assignPoolPlan(userId, plan.getId());   // ✅ renommé, remplace topUpPool
         } else {
             adminQuotaService.assignPersonalPlan(userId, plan.getId());
         }

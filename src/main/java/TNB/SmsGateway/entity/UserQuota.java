@@ -1,6 +1,7 @@
 package TNB.SmsGateway.entity;
 
 import jakarta.persistence.*;
+import java.time.Instant;
 
 @Entity
 @Table(name = "user_quotas", uniqueConstraints = {
@@ -18,16 +19,22 @@ public class UserQuota extends BaseAudit {
 
     @ManyToOne
     @JoinColumn(name = "plan_id")
-    private Plan plan;   // nullable — historique du dernier pack acheté, informatif
+    private Plan plan;   // nullable — dernier pack assigné, informatif
 
     @Column(nullable = false)
     private boolean unlimited = false;
 
-    // Solde de crédits SMS restants (type=POOL) — décrémenté à chaque envoi, jamais réinitialisé
-    @Column(name = "sms_credits_remaining")
-    private Integer smsCreditsRemaining = 0;
+    // Pertinent pour type=POOL — limite + compteur remis à zéro chaque mois
+    @Column(name = "monthly_limit")
+    private Integer monthlyLimit;
 
-    // Pertinent pour type=PERSONAL — nombre de devices déjà pairés/autorisés
+    @Column(name = "sms_sent_this_month", nullable = false)
+    private Integer smsSentThisMonth = 0;
+
+    @Column(name = "reset_at")
+    private Instant resetAt;
+
+    // Pertinent pour type=PERSONAL — nombre de devices autorisés
     @Column(name = "max_devices")
     private Integer maxDevices;
 
@@ -51,24 +58,30 @@ public class UserQuota extends BaseAudit {
     public boolean isUnlimited() { return unlimited; }
     public void setUnlimited(boolean unlimited) { this.unlimited = unlimited; }
 
-    public Integer getSmsCreditsRemaining() { return smsCreditsRemaining; }
-    public void setSmsCreditsRemaining(Integer smsCreditsRemaining) { this.smsCreditsRemaining = smsCreditsRemaining; }
+    public Integer getMonthlyLimit() { return monthlyLimit; }
+    public void setMonthlyLimit(Integer monthlyLimit) { this.monthlyLimit = monthlyLimit; }
+
+    public Integer getSmsSentThisMonth() { return smsSentThisMonth; }
+    public void setSmsSentThisMonth(Integer smsSentThisMonth) { this.smsSentThisMonth = smsSentThisMonth; }
+
+    public Instant getResetAt() { return resetAt; }
+    public void setResetAt(Instant resetAt) { this.resetAt = resetAt; }
 
     public Integer getMaxDevices() { return maxDevices; }
     public void setMaxDevices(Integer maxDevices) { this.maxDevices = maxDevices; }
 
-    public boolean hasRemainingCredits() {
+    public boolean hasRemainingQuota() {
         if (unlimited) return true;
-        return smsCreditsRemaining != null && smsCreditsRemaining > 0;
+        if (monthlyLimit == null) return false;
+        return smsSentThisMonth < monthlyLimit;
     }
 
-    public void consumeCredit() {
-        if (!unlimited && smsCreditsRemaining != null) {
-            this.smsCreditsRemaining = this.smsCreditsRemaining - 1;
-        }
+    public void incrementUsage() {
+        this.smsSentThisMonth = (this.smsSentThisMonth == null ? 0 : this.smsSentThisMonth) + 1;
     }
 
-    public void addCredits(int amount) {
-        this.smsCreditsRemaining = (this.smsCreditsRemaining == null ? 0 : this.smsCreditsRemaining) + amount;
+    public void resetForNewPeriod(Instant nextResetAt) {
+        this.smsSentThisMonth = 0;
+        this.resetAt = nextResetAt;
     }
 }

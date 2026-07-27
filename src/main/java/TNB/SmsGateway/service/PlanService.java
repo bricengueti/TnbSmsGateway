@@ -23,6 +23,12 @@ public class PlanService {
 
     @Transactional
     public PlanResponse createPlan(PlanRequest request) {
+        if (planRepository.existsByName(request.name())) {
+            throw new BusinessException(
+                    "Un pack nommé '" + request.name() + "' existe déjà. Choisissez un autre nom.",
+                    "PLAN_NAME_ALREADY_EXISTS", 409);
+        }
+
         PlanType type = parsePlanType(request.type());
 
         Plan plan = new Plan(request.name(), request.description(), type,

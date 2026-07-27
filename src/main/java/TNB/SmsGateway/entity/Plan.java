@@ -13,20 +13,16 @@ public class Plan extends BaseAudit {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "type")   // ✅ nullable = false retiré
+    @Column(nullable = false)
     private PlanType type;
-    // Pertinent pour type=POOL : nombre de crédits SMS vendus avec ce pack (null = illimité)
-    @Column(name = "sms_credits")
-    private Integer smsCredits;
+
+    // Pertinent pour type=POOL : limite mensuelle de SMS (null = illimité)
+    @Column(name = "monthly_sms_limit")
+    private Integer monthlySmsLimit;
 
     // Pertinent pour type=PERSONAL : nombre de devices autorisés (null = illimité)
     @Column(name = "max_devices")
     private Integer maxDevices;
-
-    // Pertinent pour type=PERSONAL uniquement si vous voulez aussi plafonner le volume SMS
-    // envoyé via les devices propres du client (optionnel, null = pas de plafond SMS)
-    @Column(name = "monthly_sms_limit")
-    private Integer monthlySmsLimit;
 
     @Column(name = "price")
     private BigDecimal price;
@@ -36,15 +32,14 @@ public class Plan extends BaseAudit {
 
     public Plan() { super(); }
 
-    public Plan(String name, String description, PlanType type, Integer smsCredits,
-                Integer maxDevices, Integer monthlySmsLimit, BigDecimal price) {
+    public Plan(String name, String description, PlanType type,
+                Integer monthlySmsLimit, Integer maxDevices, BigDecimal price) {
         this();
         this.name = name;
         this.description = description;
         this.type = type;
-        this.smsCredits = smsCredits;
-        this.maxDevices = maxDevices;
         this.monthlySmsLimit = monthlySmsLimit;
+        this.maxDevices = maxDevices;
         this.price = price;
     }
 
@@ -57,14 +52,11 @@ public class Plan extends BaseAudit {
     public PlanType getType() { return type; }
     public void setType(PlanType type) { this.type = type; }
 
-    public Integer getSmsCredits() { return smsCredits; }
-    public void setSmsCredits(Integer smsCredits) { this.smsCredits = smsCredits; }
+    public Integer getMonthlySmsLimit() { return monthlySmsLimit; }
+    public void setMonthlySmsLimit(Integer monthlySmsLimit) { this.monthlySmsLimit = monthlySmsLimit; }
 
     public Integer getMaxDevices() { return maxDevices; }
     public void setMaxDevices(Integer maxDevices) { this.maxDevices = maxDevices; }
-
-    public Integer getMonthlySmsLimit() { return monthlySmsLimit; }
-    public void setMonthlySmsLimit(Integer monthlySmsLimit) { this.monthlySmsLimit = monthlySmsLimit; }
 
     public BigDecimal getPrice() { return price; }
     public void setPrice(BigDecimal price) { this.price = price; }
@@ -72,6 +64,6 @@ public class Plan extends BaseAudit {
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
 
-    public boolean isUnlimitedCredits() { return smsCredits == null; }
+    public boolean isUnlimitedSms() { return monthlySmsLimit == null; }
     public boolean isUnlimitedDevices() { return maxDevices == null; }
 }

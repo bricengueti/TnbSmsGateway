@@ -13,4 +13,5 @@ public interface PlanRepository extends JpaRepository<Plan, UUID> {
     List<Plan> findByActiveTrue();
 
     List<Plan> findByActiveTrueAndType(PlanType type);
+    boolean existsByName(String name);   // ✅ ajouté
 }

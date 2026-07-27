@@ -67,15 +67,14 @@ public class AdminController {
         return ResponseEntity.ok(adminQuotaService.listQuotas(type));
     }
 
-    @Operation(summary = "Recharger des crédits SMS (pool prépayé)", description = "Ajoute des crédits " +
-            "au solde existant — jamais un reset. Soit via un pack (planId), soit un montant libre " +
-            "(credits). Le solde survit à toute régénération de clé API du client.")
-    @PostMapping("/users/{userId}/quota/pool/topup")
-    public ResponseEntity<UserQuotaResponse> topUpPool(
+    @Operation(summary = "Assigner un pack SMS (POOL)", description = "Définit la limite mensuelle de SMS " +
+            "pour ce compte, avec reset automatique chaque mois. Remplace la limite précédente.")
+    @PostMapping("/users/{userId}/quota/pool/assign-plan")
+    public ResponseEntity<UserQuotaResponse> assignPoolPlan(
             @PathVariable UUID userId,
-            @Valid @RequestBody TopUpPoolRequest request
+            @Valid @RequestBody AssignPoolPlanRequest request
     ) {
-        return ResponseEntity.ok(adminQuotaService.topUpPool(userId, request));
+        return ResponseEntity.ok(adminQuotaService.assignPoolPlan(userId, request.planId()));
     }
 
     @Operation(summary = "Assigner un pack de devices (PERSONAL)", description = "Définit le plafond " +

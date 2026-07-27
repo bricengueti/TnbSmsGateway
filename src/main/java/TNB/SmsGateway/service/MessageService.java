@@ -62,7 +62,7 @@ public class MessageService {
 
 // ✅ ajouté — garde-fou de quota, uniquement pour le mode pool partagé
         if (ctx.routingMode() == RoutingMode.MANAGED_POOL) {
-            userQuotaService.consumeCredit(ctx.userId());   // ✅ basé sur le user, plus sur l'apiKeyId
+            userQuotaService.consumeQuota(ctx.userId());   // ✅ renommé, remplace consumeCredit
         }
 
         if (request.idempotencyKey() != null && !request.idempotencyKey().isEmpty()) {

@@ -45,6 +45,7 @@ public class SecurityConfig {
                                 // pour le WebSocket). Le userId est retrouvé côté service via
                                 // device.getUser().getId(), pas besoin d'authentification ici.
                                 "/v1/devices/*/pacing",
+                                "/v1/webhook/payment/**",
                                 "/v1/devices/*/sims/*/pacing",
                                 "/v1/health",
                                 "/swagger-ui/**",
