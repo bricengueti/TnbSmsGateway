@@ -61,9 +61,19 @@ public class MessageRouterService {
     public Device findAvailableDevice(UUID userId, RoutingMode routingMode,
                                       String countryCode, String operatorCode) {
 
-        List<Device> devices = (routingMode == RoutingMode.MANAGED_POOL)
-                ? deviceRepository.findAvailablePoolDevices(countryCode, operatorCode)
-                : deviceRepository.findAvailableDevices(userId, countryCode, operatorCode);
+        List<Device> devices;
+
+        if (routingMode == RoutingMode.MANAGED_POOL) {
+            devices = deviceRepository.findAvailablePoolDevices(countryCode, operatorCode);
+
+            // ✅ Secours : si aucun device POOL pur n'est disponible, on retente sur
+            // les devices PERSONAL explicitement ouverts au pool par leur propriétaire (opt-in admin)
+            if (devices.isEmpty()) {
+                devices = deviceRepository.findAvailablePersonalFallbackDevices(countryCode, operatorCode);
+            }
+        } else {
+            devices = deviceRepository.findAvailableDevices(userId, countryCode, operatorCode);
+        }
 
         if (devices.isEmpty()) {
             throw new NoDeviceForCountryOperatorException(countryCode, operatorCode);
@@ -189,4 +199,6 @@ public class MessageRouterService {
     public List<Message> findMessagesToReassign(UUID deviceId) {
         return messageRepository.findDispatchMessagesByDevice(deviceId);
     }
+
+
 }

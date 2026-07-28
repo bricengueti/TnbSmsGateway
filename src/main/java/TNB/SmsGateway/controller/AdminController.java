@@ -170,4 +170,15 @@ public class AdminController {
         adminPlatformService.revokeApiKey(id);
         return ResponseEntity.ok(new ApiResponse("Clé API révoquée", true));
     }
+
+    @Operation(summary = "Activer/désactiver le secours pool sur un device PERSONAL", description = "Permet " +
+            "à un device BYOD de servir le pool partagé uniquement quand aucun device POOL pur n'est " +
+            "disponible pour ce pays/opérateur. N'influence jamais le quota SMS du propriétaire du device.")
+    @PatchMapping("/devices/{id}/pool-fallback")
+    public ResponseEntity<AdminDeviceResponse> setPoolFallback(
+            @PathVariable UUID id,
+            @Valid @RequestBody DevicePoolFallbackRequest request
+    ) {
+        return ResponseEntity.ok(adminPlatformService.setPoolFallback(id, request.enabled()));
+    }
 }

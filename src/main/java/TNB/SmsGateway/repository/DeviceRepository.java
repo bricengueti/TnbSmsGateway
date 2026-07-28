@@ -161,4 +161,30 @@ public interface DeviceRepository extends JpaRepository<Device, UUID> {
     long countByStatusAndRevokedAtIsNull(DeviceStatus status);
     long countByRevokedAtIsNotNull();
     long countByUserId(UUID userId);
+
+    @Query("SELECT DISTINCT d FROM Device d " +
+            "JOIN d.sims s " +
+            "WHERE d.type = 'PERSONAL' " +
+            "AND d.availableForPool = true " +
+            "AND d.country.code = :countryCode " +
+            "AND s.operator.code = :operatorCode " +
+            "AND d.status = 'ONLINE' " +
+            "AND s.isActive = true " +
+            "AND d.revokedAt IS NULL")
+    List<Device> findCandidatePersonalFallbackDevices(@Param("countryCode") String countryCode,
+                                                      @Param("operatorCode") String operatorCode);
+
+    default List<Device> findAvailablePersonalFallbackDevices(String countryCode, String operatorCode) {
+        return findCandidatePersonalFallbackDevices(countryCode, operatorCode).stream()
+                .filter(device -> device.getSims().stream()
+                        .anyMatch(sim -> operatorCode.equals(sim.getOperator().getCode())
+                                && Boolean.TRUE.equals(sim.getIsActive())
+                                && sim.hasQuota()))
+                .sorted(Comparator.comparingInt(device -> device.getSims().stream()
+                        .filter(sim -> operatorCode.equals(sim.getOperator().getCode()))
+                        .mapToInt(sim -> sim.getDailySmsSent() != null ? sim.getDailySmsSent() : 0)
+                        .min()
+                        .orElse(0)))
+                .toList();
+    }
 }

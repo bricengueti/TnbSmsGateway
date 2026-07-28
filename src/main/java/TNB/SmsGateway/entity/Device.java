@@ -53,6 +53,11 @@ public class Device extends BaseAudit {
         return type != null ? type : DeviceType.PERSONAL;   // défensif, cf. remarque ddl-auto=update
     }
     public void setType(DeviceType type) { this.type = type; }
+    @Column(name = "available_for_pool", nullable = false)
+    private boolean availableForPool = false;
+
+    public boolean isAvailableForPool() { return availableForPool; }
+    public void setAvailableForPool(boolean availableForPool) { this.availableForPool = availableForPool; }
 
 
     public Device() {

@@ -108,6 +108,21 @@ public class AdminPlatformService {
         deviceRepository.save(device);
     }
 
+    @Transactional
+    public AdminDeviceResponse setPoolFallback(UUID deviceId, boolean enabled) {
+        Device device = deviceRepository.findById(deviceId)
+                .orElseThrow(() -> new BusinessException("Device non trouvé", "DEVICE_NOT_FOUND", 404));
+
+        if (device.getType() != DeviceType.PERSONAL) {
+            throw new BusinessException("Seuls les devices PERSONAL peuvent être activés en secours pool " +
+                    "(un device POOL sert déjà le pool nativement)", "NOT_A_PERSONAL_DEVICE", 400);
+        }
+
+        device.setAvailableForPool(enabled);
+        deviceRepository.save(device);
+        return toDeviceResponse(device);
+    }
+
     // ===== API KEYS =====
 
     public List<AdminApiKeyResponse> listApiKeys(RoutingMode routingMode) {
@@ -153,15 +168,10 @@ public class AdminPlatformService {
 
     private AdminDeviceResponse toDeviceResponse(Device device) {
         return new AdminDeviceResponse(
-                device.getId().toString(),
-                device.getUser().getEmail(),
-                device.getType().name(),
-                device.getStatus().name(),
-                device.getCountry().getCode(),
-                device.getLabel(),
-                device.isRevoked(),
-                device.getPairedAt(),
-                device.getLastHeartbeatAt()
+                device.getId().toString(), device.getUser().getEmail(), device.getType().name(),
+                device.getStatus().name(), device.getCountry().getCode(), device.getLabel(),
+                device.isRevoked(), device.isAvailableForPool(),   // ✅ ajouté
+                device.getPairedAt(), device.getLastHeartbeatAt()
         );
     }
 
