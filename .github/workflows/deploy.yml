@@ -3,13 +3,12 @@ name: CI/CD Pipeline - TnbSmsGateway Backend
 # Déclenchement : chaque branche pousse sur un environnement dédié.
 # develop -> dev | preprod -> preprod | main -> prod
 on:
-  workflow_dispatch:
   push:
     branches:
       - develop
       - preprod
       - main
-
+    workflow_dispatch:
 jobs:
 
   # ============================================================
