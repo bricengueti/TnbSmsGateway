@@ -13,7 +13,7 @@ jobs:
 
   # ============================================================
   # JOB 1 — Mappe la branche poussée vers l'environnement GitHub
-  # et vers le nom de dossier utilisé sur le serveur
+  # et vers le nom de dossier utilisé sur le serveu
   # ============================================================
   set-env:
     runs-on: ubuntu-latest
