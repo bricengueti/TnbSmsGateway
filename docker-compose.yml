@@ -1,11 +1,12 @@
 services:
   sms-gateway:
-    image: brice99/tnb-sms-gateway:${IMAGE_TAG}
+    image: brice99/tnb-sms-gateway:${IMAGE_TAG:-latest}
     container_name: ${CONTAINER_NAME}
     network_mode: "host"
     restart: always
     environment:
       - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
+      - SERVER_PORT=${SERVER_PORT}
       - DB_HOST=${DB_HOST}
       - DB_PORT=${DB_PORT}
       - DB_NAME=${DB_NAME}

@@ -3,7 +3,7 @@ package TNB.SmsGateway.dto.response;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "Informations de l'utilisateur")
-public record UserInfo(
+record UserInfo(
         @Schema(description = "ID de l'utilisateur", example = "550e8400-e29b-41d4-a716-446655440000")
         String id,
 

@@ -205,458 +205,458 @@ public class DataInitializer implements CommandLineRunner {
 
         // Bénin
         operators.addAll(Arrays.asList(
-                new Operator("MTN_BJ", "MTN", benin),
-                new Operator("MOOV_BJ", "Moov", benin),
-                new Operator("GLO_BJ", "Glo", benin)
+                new Operator("MTN", "MTN", benin),
+                new Operator("MOOV", "Moov", benin),
+                new Operator("GLO", "Glo", benin)
         ));
 
         // Burkina Faso
         operators.addAll(Arrays.asList(
-                new Operator("ORANGE_BF", "Orange", burkina),
-                new Operator("TELMOB_BF", "Telmob", burkina)
+                new Operator("ORANGE", "Orange", burkina),
+                new Operator("TELMOB", "Telmob", burkina)
         ));
 
         // Cap-Vert
         operators.addAll(Arrays.asList(
-                new Operator("CVTELECOM_CV", "CV Telecom", capeVerde),
-                new Operator("TMAIS_CV", "T-Mais", capeVerde)
+                new Operator("CVTELECOM", "CV Telecom", capeVerde),
+                new Operator("TMAIS", "T-Mais", capeVerde)
         ));
 
         // Côte d'Ivoire
         operators.addAll(Arrays.asList(
-                new Operator("ORANGE_CI", "Orange", coteIvoire),
-                new Operator("MTN_CI", "MTN", coteIvoire),
-                new Operator("MOOV_CI", "Moov", coteIvoire)
+                new Operator("ORANGE", "Orange", coteIvoire),
+                new Operator("MTN", "MTN", coteIvoire),
+                new Operator("MOOV", "Moov", coteIvoire)
         ));
 
         // Gambie
         operators.addAll(Arrays.asList(
-                new Operator("GAMTEL_GM", "Gamtel", gambia),
-                new Operator("AFRICELL_GM", "Africell", gambia)
+                new Operator("GAMTEL", "Gamtel", gambia),
+                new Operator("AFRICELL", "Africell", gambia)
         ));
 
         // Ghana
         operators.addAll(Arrays.asList(
-                new Operator("MTN_GH", "MTN", ghana),
-                new Operator("VODAFONE_GH", "Vodafone", ghana),
-                new Operator("AIRTELTIGO_GH", "AirtelTigo", ghana)
+                new Operator("MTN", "MTN", ghana),
+                new Operator("VODAFONE", "Vodafone", ghana),
+                new Operator("AIRTELTIGO", "AirtelTigo", ghana)
         ));
 
         // Guinée
         operators.addAll(Arrays.asList(
-                new Operator("ORANGE_GN", "Orange", guinea),
-                new Operator("MTN_GN", "MTN", guinea)
+                new Operator("ORANGE", "Orange", guinea),
+                new Operator("MTN", "MTN", guinea)
         ));
 
         // Guinée-Bissau
         operators.addAll(Arrays.asList(
-                new Operator("ORANGE_GW", "Orange", guineaBissau),
-                new Operator("MTN_GW", "MTN", guineaBissau)
+                new Operator("ORANGE", "Orange", guineaBissau),
+                new Operator("MTN", "MTN", guineaBissau)
         ));
 
         // Liberia
         operators.addAll(Arrays.asList(
-                new Operator("LONESTAR_LR", "Lonestar", liberia),
-                new Operator("ORANGE_LR", "Orange", liberia)
+                new Operator("LONESTAR", "Lonestar", liberia),
+                new Operator("ORANGE", "Orange", liberia)
         ));
 
         // Mali
         operators.addAll(Arrays.asList(
-                new Operator("ORANGE_ML", "Orange", mali),
-                new Operator("MALITEL_ML", "Malitel", mali)
+                new Operator("ORANGE", "Orange", mali),
+                new Operator("MALITEL", "Malitel", mali)
         ));
 
         // Mauritanie
         operators.addAll(Arrays.asList(
-                new Operator("MAURITEL_MR", "Mauritel", mauritania),
-                new Operator("MATTEL_MR", "Mattel", mauritania)
+                new Operator("MAURITEL", "Mauritel", mauritania),
+                new Operator("MATTEL", "Mattel", mauritania)
         ));
 
         // Niger
         operators.addAll(Arrays.asList(
-                new Operator("SONITEL_NE", "Sonitel", niger),
-                new Operator("NIGELEC_NE", "Nigelec", niger)
+                new Operator("SONITEL", "Sonitel", niger),
+                new Operator("NIGELEC", "Nigelec", niger)
         ));
 
         // Nigeria
         operators.addAll(Arrays.asList(
-                new Operator("MTN_NG", "MTN", nigeria),
-                new Operator("GLO_NG", "Glo", nigeria),
-                new Operator("AIRTEL_NG", "Airtel", nigeria),
-                new Operator("9MOBILE_NG", "9mobile", nigeria)
+                new Operator("MTN", "MTN", nigeria),
+                new Operator("GLO", "Glo", nigeria),
+                new Operator("AIRTEL", "Airtel", nigeria),
+                new Operator("9MOBILE", "9mobile", nigeria)
         ));
 
         // Sénégal
         operators.addAll(Arrays.asList(
-                new Operator("ORANGE_SN", "Orange", senegal),
-                new Operator("EXPRESSO_SN", "Expresso", senegal),
-                new Operator("FREE_SN", "Free", senegal)
+                new Operator("ORANGE", "Orange", senegal),
+                new Operator("EXPRESSO", "Expresso", senegal),
+                new Operator("FREE", "Free", senegal)
         ));
 
         // Sierra Leone
         operators.addAll(Arrays.asList(
-                new Operator("AFRICELL_SL", "Africell", sierraLeone),
-                new Operator("ORANGE_SL", "Orange", sierraLeone)
+                new Operator("AFRICELL", "Africell", sierraLeone),
+                new Operator("ORANGE", "Orange", sierraLeone)
         ));
 
         // Togo
         operators.addAll(Arrays.asList(
-                new Operator("TOGOCEL_TG", "Togocel", togo),
-                new Operator("MOOV_TG", "Moov", togo)
+                new Operator("TOGOCEL", "Togocel", togo),
+                new Operator("MOOV", "Moov", togo)
         ));
 
         // --- AFRIQUE CENTRALE ---
 
         // Cameroun
         operators.addAll(Arrays.asList(
-                new Operator("MTN_CM", "MTN", cameroon),
-                new Operator("ORANGE_CM", "Orange", cameroon),
-                new Operator("CAMTEL_CM", "Camtel", cameroon)
+                new Operator("MTN", "MTN", cameroon),
+                new Operator("ORANGE", "Orange", cameroon),
+                new Operator("CAMTEL", "Camtel", cameroon)
         ));
 
         // RCA
         operators.addAll(Arrays.asList(
-                new Operator("ORANGE_CF", "Orange", car),
+                new Operator("ORANGE", "Orange", car),
                 new Operator("TELE_CAR", "Telecel", car)
         ));
 
         // Tchad
         operators.addAll(Arrays.asList(
-                new Operator("AIRTEL_TD", "Airtel", chad),
-                new Operator("TIGO_TD", "Tigo", chad)
+                new Operator("AIRTEL", "Airtel", chad),
+                new Operator("TIGO", "Tigo", chad)
         ));
 
         // Congo-Brazzaville
         operators.addAll(Arrays.asList(
-                new Operator("AIRTEL_CG", "Airtel", congo),
-                new Operator("MTN_CG", "MTN", congo)
+                new Operator("AIRTEL", "Airtel", congo),
+                new Operator("MTN", "MTN", congo)
         ));
 
         // RDC
         operators.addAll(Arrays.asList(
-                new Operator("VODACOM_CD", "Vodacom", drc),
-                new Operator("ORANGE_CD", "Orange", drc),
-                new Operator("AIRTEL_CD", "Airtel", drc)
+                new Operator("VODACOM", "Vodacom", drc),
+                new Operator("ORANGE", "Orange", drc),
+                new Operator("AIRTEL", "Airtel", drc)
         ));
 
         // Gabon
         operators.addAll(Arrays.asList(
-                new Operator("GABON_TELECOM_GA", "Gabon Telecom", gabon),
-                new Operator("LIBERTIS_GA", "Libertis", gabon)
+                new Operator("GABON_TELECOM", "Gabon Telecom", gabon),
+                new Operator("LIBERTIS", "Libertis", gabon)
         ));
 
         // --- AFRIQUE DE L'EST ---
 
         // Kenya
         operators.addAll(Arrays.asList(
-                new Operator("SAFARICOM_KE", "Safaricom", kenya),
-                new Operator("AIRTEL_KE", "Airtel", kenya),
-                new Operator("TELKOM_KE", "Telkom", kenya)
+                new Operator("SAFARICOM", "Safaricom", kenya),
+                new Operator("AIRTEL", "Airtel", kenya),
+                new Operator("TELKOM", "Telkom", kenya)
         ));
 
         // Tanzanie
         operators.addAll(Arrays.asList(
-                new Operator("VODACOM_TZ", "Vodacom", tanzania),
-                new Operator("AIRTEL_TZ", "Airtel", tanzania),
-                new Operator("TIGO_TZ", "Tigo", tanzania)
+                new Operator("VODACOM", "Vodacom", tanzania),
+                new Operator("AIRTEL", "Airtel", tanzania),
+                new Operator("TIGO", "Tigo", tanzania)
         ));
 
         // Ouganda
         operators.addAll(Arrays.asList(
-                new Operator("MTN_UG", "MTN", uganda),
-                new Operator("AIRTEL_UG", "Airtel", uganda)
+                new Operator("MTN", "MTN", uganda),
+                new Operator("AIRTEL", "Airtel", uganda)
         ));
 
         // Rwanda
         operators.addAll(Arrays.asList(
-                new Operator("MTN_RW", "MTN", rwanda),
-                new Operator("AIRTEL_RW", "Airtel", rwanda)
+                new Operator("MTN", "MTN", rwanda),
+                new Operator("AIRTEL", "Airtel", rwanda)
         ));
 
         // Mozambique
         operators.addAll(Arrays.asList(
-                new Operator("VODACOM_MZ", "Vodacom", mozambique),
-                new Operator("M_CELL_MZ", "M-Cell", mozambique)
+                new Operator("VODACOM", "Vodacom", mozambique),
+                new Operator("M_CELL", "M-Cell", mozambique)
         ));
 
         // Madagascar
         operators.addAll(Arrays.asList(
-                new Operator("ORANGE_MG", "Orange", madagascar),
-                new Operator("TELMA_MG", "Telma", madagascar)
+                new Operator("ORANGE", "Orange", madagascar),
+                new Operator("TELMA", "Telma", madagascar)
         ));
 
         // Zambie
         operators.addAll(Arrays.asList(
-                new Operator("MTN_ZM", "MTN", zambia),
-                new Operator("AIRTEL_ZM", "Airtel", zambia)
+                new Operator("MTN", "MTN", zambia),
+                new Operator("AIRTEL", "Airtel", zambia)
         ));
 
         // Zimbabwe
         operators.addAll(Arrays.asList(
-                new Operator("ECONET_ZW", "Econet", zimbabwe),
-                new Operator("NETONE_ZW", "NetOne", zimbabwe)
+                new Operator("ECONET", "Econet", zimbabwe),
+                new Operator("NETONE", "NetOne", zimbabwe)
         ));
 
         // Malawi
         operators.addAll(Arrays.asList(
-                new Operator("TNM_MW", "TNM", malawi),
-                new Operator("AIRTEL_MW", "Airtel", malawi)
+                new Operator("TNM", "TNM", malawi),
+                new Operator("AIRTEL", "Airtel", malawi)
         ));
 
         // Maurice
         operators.addAll(Arrays.asList(
-                new Operator("MYT_MU", "MYT", mauritius),
-                new Operator("EMTEL_MU", "Emtel", mauritius)
+                new Operator("MYT", "MYT", mauritius),
+                new Operator("EMTEL", "Emtel", mauritius)
         ));
 
         // --- AFRIQUE AUSTRALE ---
 
         // Afrique du Sud
         operators.addAll(Arrays.asList(
-                new Operator("VODACOM_ZA", "Vodacom", southAfrica),
-                new Operator("MTN_ZA", "MTN", southAfrica),
-                new Operator("TELKOM_ZA", "Telkom", southAfrica),
-                new Operator("CELL_C_ZA", "Cell C", southAfrica)
+                new Operator("VODACOM", "Vodacom", southAfrica),
+                new Operator("MTN", "MTN", southAfrica),
+                new Operator("TELKOM", "Telkom", southAfrica),
+                new Operator("CELL_C", "Cell C", southAfrica)
         ));
 
         // Angola
         operators.addAll(Arrays.asList(
-                new Operator("UNITEL_AO", "Unitel", angola),
-                new Operator("MOVICEL_AO", "Movicel", angola)
+                new Operator("UNITEL", "Unitel", angola),
+                new Operator("MOVICEL", "Movicel", angola)
         ));
 
         // Namibie
         operators.addAll(Arrays.asList(
-                new Operator("MTC_NA", "MTC", namibia),
-                new Operator("TELECOM_NA", "Telecom", namibia)
+                new Operator("MTC", "MTC", namibia),
+                new Operator("TELECOM", "Telecom", namibia)
         ));
 
         // Botswana
         operators.addAll(Arrays.asList(
-                new Operator("MASCOM_BW", "Mascom", botswana),
-                new Operator("ORANGE_BW", "Orange", botswana)
+                new Operator("MASCOM", "Mascom", botswana),
+                new Operator("ORANGE", "Orange", botswana)
         ));
 
         // --- AFRIQUE DU NORD ---
 
         // Maroc
         operators.addAll(Arrays.asList(
-                new Operator("IAM_MA", "IAM", morocco),
-                new Operator("ORANGE_MA", "Orange", morocco),
-                new Operator("INWI_MA", "Inwi", morocco)
+                new Operator("IAM", "IAM", morocco),
+                new Operator("ORANGE", "Orange", morocco),
+                new Operator("INWI", "Inwi", morocco)
         ));
 
         // Algérie
         operators.addAll(Arrays.asList(
-                new Operator("MOBILIS_DZ", "Mobilis", algeria),
-                new Operator("DJAZZY_DZ", "Djezzy", algeria),
-                new Operator("OOREDOO_DZ", "Ooredoo", algeria)
+                new Operator("MOBILIS", "Mobilis", algeria),
+                new Operator("DJAZZY", "Djezzy", algeria),
+                new Operator("OOREDOO", "Ooredoo", algeria)
         ));
 
         // Tunisie
         operators.addAll(Arrays.asList(
-                new Operator("ORANGE_TN", "Orange", tunisia),
-                new Operator("OOREDOO_TN", "Ooredoo", tunisia),
-                new Operator("TUNISIANA_TN", "Tunisiana", tunisia)
+                new Operator("ORANGE", "Orange", tunisia),
+                new Operator("OOREDOO", "Ooredoo", tunisia),
+                new Operator("TUNISIANA", "Tunisiana", tunisia)
         ));
 
         // Égypte
         operators.addAll(Arrays.asList(
-                new Operator("VODAFONE_EG", "Vodafone", egypt),
-                new Operator("ORANGE_EG", "Orange", egypt),
-                new Operator("ETISALAT_EG", "Etisalat", egypt)
+                new Operator("VODAFONE", "Vodafone", egypt),
+                new Operator("ORANGE", "Orange", egypt),
+                new Operator("ETISALAT", "Etisalat", egypt)
         ));
 
         // Libye
         operators.addAll(Arrays.asList(
-                new Operator("LIBYANA_LY", "Libyana", libya),
-                new Operator("ALMADAR_LY", "Al-Madar", libya)
+                new Operator("LIBYANA", "Libyana", libya),
+                new Operator("ALMADAR", "Al-Madar", libya)
         ));
 
         // Soudan
         operators.addAll(Arrays.asList(
-                new Operator("SUDANI_SD", "Sudani", sudan),
-                new Operator("MTN_SD", "MTN", sudan)
+                new Operator("SUDANI", "Sudani", sudan),
+                new Operator("MTN", "MTN", sudan)
         ));
 
         // --- EUROPE DE L'OUEST ---
 
         // France
         operators.addAll(Arrays.asList(
-                new Operator("ORANGE_FR", "Orange", france),
-                new Operator("SFR_FR", "SFR", france),
-                new Operator("FREE_FR", "Free Mobile", france),
-                new Operator("BOUYGUES_FR", "Bouygues Telecom", france)
+                new Operator("ORANGE", "Orange", france),
+                new Operator("SFR", "SFR", france),
+                new Operator("FREE", "Free Mobile", france),
+                new Operator("BOUYGUES", "Bouygues Telecom", france)
         ));
 
         // Allemagne
         operators.addAll(Arrays.asList(
-                new Operator("T_MOBILE_DE", "T-Mobile", germany),
-                new Operator("VODAFONE_DE", "Vodafone", germany),
-                new Operator("O2_DE", "O2", germany)
+                new Operator("T_MOBILE", "T-Mobile", germany),
+                new Operator("VODAFONE", "Vodafone", germany),
+                new Operator("O2", "O2", germany)
         ));
 
         // Royaume-Uni
         operators.addAll(Arrays.asList(
-                new Operator("EE_GB", "EE", uk),
-                new Operator("VODAFONE_GB", "Vodafone", uk),
-                new Operator("O2_GB", "O2", uk),
-                new Operator("THREE_GB", "Three", uk)
+                new Operator("EE", "EE", uk),
+                new Operator("VODAFONE", "Vodafone", uk),
+                new Operator("O2", "O2", uk),
+                new Operator("THREE", "Three", uk)
         ));
 
         // Italie
         operators.addAll(Arrays.asList(
-                new Operator("TIM_IT", "TIM", italy),
-                new Operator("VODAFONE_IT", "Vodafone", italy),
-                new Operator("WIND_IT", "Wind", italy)
+                new Operator("TIM", "TIM", italy),
+                new Operator("VODAFONE", "Vodafone", italy),
+                new Operator("WIND", "Wind", italy)
         ));
 
         // Espagne
         operators.addAll(Arrays.asList(
-                new Operator("MOVISTAR_ES", "Movistar", spain),
-                new Operator("ORANGE_ES", "Orange", spain),
-                new Operator("VODAFONE_ES", "Vodafone", spain)
+                new Operator("MOVISTAR", "Movistar", spain),
+                new Operator("ORANGE", "Orange", spain),
+                new Operator("VODAFONE", "Vodafone", spain)
         ));
 
         // Portugal
         operators.addAll(Arrays.asList(
-                new Operator("MEO_PT", "MEO", portugal),
-                new Operator("NOS_PT", "NOS", portugal),
-                new Operator("VODAFONE_PT", "Vodafone", portugal)
+                new Operator("MEO", "MEO", portugal),
+                new Operator("NOS", "NOS", portugal),
+                new Operator("VODAFONE", "Vodafone", portugal)
         ));
 
         // Belgique
         operators.addAll(Arrays.asList(
-                new Operator("PROXIMUS_BE", "Proximus", belgium),
-                new Operator("ORANGE_BE", "Orange", belgium),
-                new Operator("TELENET_BE", "Telenet", belgium)
+                new Operator("PROXIMUS", "Proximus", belgium),
+                new Operator("ORANGE", "Orange", belgium),
+                new Operator("TELENET", "Telenet", belgium)
         ));
 
         // Pays-Bas
         operators.addAll(Arrays.asList(
-                new Operator("KPN_NL", "KPN", netherlands),
-                new Operator("VODAFONE_NL", "Vodafone", netherlands),
-                new Operator("T_MOBILE_NL", "T-Mobile", netherlands)
+                new Operator("KPN", "KPN", netherlands),
+                new Operator("VODAFONE", "Vodafone", netherlands),
+                new Operator("T_MOBILE", "T-Mobile", netherlands)
         ));
 
         // Suisse
         operators.addAll(Arrays.asList(
-                new Operator("SWISSCOM_CH", "Swisscom", switzerland),
-                new Operator("SUNRISE_CH", "Sunrise", switzerland),
-                new Operator("SALT_CH", "Salt", switzerland)
+                new Operator("SWISSCOM", "Swisscom", switzerland),
+                new Operator("SUNRISE", "Sunrise", switzerland),
+                new Operator("SALT", "Salt", switzerland)
         ));
 
         // Autriche
         operators.addAll(Arrays.asList(
-                new Operator("A1_AT", "A1", austria),
-                new Operator("T_MOBILE_AT", "T-Mobile", austria),
-                new Operator("DREI_AT", "Drei", austria)
+                new Operator("A1", "A1", austria),
+                new Operator("T_MOBILE", "T-Mobile", austria),
+                new Operator("DREI", "Drei", austria)
         ));
 
         // Irlande
         operators.addAll(Arrays.asList(
-                new Operator("VODAFONE_IE", "Vodafone", ireland),
-                new Operator("EIR_IE", "Eir", ireland),
-                new Operator("THREE_IE", "Three", ireland)
+                new Operator("VODAFONE", "Vodafone", ireland),
+                new Operator("EIR", "Eir", ireland),
+                new Operator("THREE", "Three", ireland)
         ));
 
         // --- EUROPE DU NORD ---
 
         // Danemark
         operators.addAll(Arrays.asList(
-                new Operator("TDC_DK", "TDC", denmark),
-                new Operator("TELENOR_DK", "Telenor", denmark),
-                new Operator("THREE_DK", "Three", denmark)
+                new Operator("TDC", "TDC", denmark),
+                new Operator("TELENOR", "Telenor", denmark),
+                new Operator("THREE", "Three", denmark)
         ));
 
         // Suède
         operators.addAll(Arrays.asList(
-                new Operator("TELIA_SE", "Telia", sweden),
-                new Operator("TELENOR_SE", "Telenor", sweden),
-                new Operator("THREE_SE", "Three", sweden)
+                new Operator("TELIA", "Telia", sweden),
+                new Operator("TELENOR", "Telenor", sweden),
+                new Operator("THREE", "Three", sweden)
         ));
 
         // Norvège
         operators.addAll(Arrays.asList(
-                new Operator("TELENOR_NO", "Telenor", norway),
-                new Operator("TELIA_NO", "Telia", norway),
-                new Operator("ICE_NO", "Ice", norway)
+                new Operator("TELENOR", "Telenor", norway),
+                new Operator("TELIA", "Telia", norway),
+                new Operator("ICE", "Ice", norway)
         ));
 
         // Finlande
         operators.addAll(Arrays.asList(
-                new Operator("TELIA_FI", "Telia", finland),
-                new Operator("DNA_FI", "DNA", finland),
-                new Operator("ELISA_FI", "Elisa", finland)
+                new Operator("TELIA", "Telia", finland),
+                new Operator("DNA", "DNA", finland),
+                new Operator("ELISA", "Elisa", finland)
         ));
 
         // Islande
         operators.addAll(Arrays.asList(
-                new Operator("SÍMINN_IS", "Síminn", iceland),
-                new Operator("VODAFONE_IS", "Vodafone", iceland)
+                new Operator("SÍMINN", "Síminn", iceland),
+                new Operator("VODAFONE", "Vodafone", iceland)
         ));
 
         // --- EUROPE DE L'EST ---
 
         // Pologne
         operators.addAll(Arrays.asList(
-                new Operator("ORANGE_PL", "Orange", poland),
-                new Operator("T_MOBILE_PL", "T-Mobile", poland),
-                new Operator("PLUS_PL", "Plus", poland)
+                new Operator("ORANGE", "Orange", poland),
+                new Operator("T_MOBILE", "T-Mobile", poland),
+                new Operator("PLUS", "Plus", poland)
         ));
 
         // République Tchèque
         operators.addAll(Arrays.asList(
-                new Operator("O2_CZ", "O2", czechia),
-                new Operator("T_MOBILE_CZ", "T-Mobile", czechia),
-                new Operator("VODAFONE_CZ", "Vodafone", czechia)
+                new Operator("O2", "O2", czechia),
+                new Operator("T_MOBILE", "T-Mobile", czechia),
+                new Operator("VODAFONE", "Vodafone", czechia)
         ));
 
         // Roumanie
         operators.addAll(Arrays.asList(
-                new Operator("ORANGE_RO", "Orange", romania),
-                new Operator("VODAFONE_RO", "Vodafone", romania),
-                new Operator("DIGI_RO", "Digi", romania)
+                new Operator("ORANGE", "Orange", romania),
+                new Operator("VODAFONE", "Vodafone", romania),
+                new Operator("DIGI", "Digi", romania)
         ));
 
         // Grèce
         operators.addAll(Arrays.asList(
-                new Operator("COSMOTE_GR", "Cosmote", greece),
-                new Operator("VODAFONE_GR", "Vodafone", greece),
-                new Operator("WIND_GR", "Wind", greece)
+                new Operator("COSMOTE", "Cosmote", greece),
+                new Operator("VODAFONE", "Vodafone", greece),
+                new Operator("WIND", "Wind", greece)
         ));
 
         // Hongrie
         operators.addAll(Arrays.asList(
-                new Operator("MAGYAR_HU", "Magyar", hungary),
-                new Operator("VODAFONE_HU", "Vodafone", hungary),
-                new Operator("T_MOBILE_HU", "T-Mobile", hungary)
+                new Operator("MAGYAR", "Magyar", hungary),
+                new Operator("VODAFONE", "Vodafone", hungary),
+                new Operator("T_MOBILE", "T-Mobile", hungary)
         ));
 
         // Bulgarie
         operators.addAll(Arrays.asList(
-                new Operator("A1_BG", "A1", bulgaria),
-                new Operator("VIVACOM_BG", "Vivacom", bulgaria),
-                new Operator("TELENOR_BG", "Telenor", bulgaria)
+                new Operator("A1", "A1", bulgaria),
+                new Operator("VIVACOM", "Vivacom", bulgaria),
+                new Operator("TELENOR", "Telenor", bulgaria)
         ));
 
         // Croatie
         operators.addAll(Arrays.asList(
-                new Operator("HT_HR", "HT", croatia),
-                new Operator("TELE2_HR", "Tele2", croatia)
+                new Operator("HT", "HT", croatia),
+                new Operator("TELE2", "Tele2", croatia)
         ));
 
         // Serbie
         operators.addAll(Arrays.asList(
-                new Operator("TELENOR_RS", "Telenor", serbia),
-                new Operator("VIP_RS", "Vip", serbia)
+                new Operator("TELENOR", "Telenor", serbia),
+                new Operator("VIP", "Vip", serbia)
         ));
 
         // --- TURQUIE ---
         operators.addAll(Arrays.asList(
-                new Operator("TURKCELL_TR", "Turkcell", turkiye),
-                new Operator("VODAFONE_TR", "Vodafone", turkiye),
-                new Operator("TURK_TELEKOM_TR", "Turk Telekom", turkiye)
+                new Operator("TURKCELL", "Turkcell", turkiye),
+                new Operator("VODAFONE", "Vodafone", turkiye),
+                new Operator("TURK_TELEKOM", "Turk Telekom", turkiye)
         ));
 
         // ============================================

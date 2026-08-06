@@ -28,6 +28,10 @@ public record MessageResponse(
 
         @Schema(description = "Statut du message", example = "DELIVERED")
         String status,
+        @Schema(description = "Mode de routage utilisé pour ce message. OWN_DEVICES = envoyé via l'un de vos " +
+                "propres devices. MANAGED_POOL = envoyé via un device contribué par un tiers au pool partagé.",
+                example = "OWN_DEVICES", allowableValues = {"OWN_DEVICES", "MANAGED_POOL"})
+        String routingMode,
 
         @Schema(description = "Nombre de tentatives", example = "1")
         Integer attempts,

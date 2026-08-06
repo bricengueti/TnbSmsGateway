@@ -1,9 +1,6 @@
 package TNB.SmsGateway.service;
 
-import TNB.SmsGateway.entity.Device;
-import TNB.SmsGateway.entity.DeviceSim;
-import TNB.SmsGateway.entity.Message;
-import TNB.SmsGateway.entity.MessageStatus;
+import TNB.SmsGateway.entity.*;
 import TNB.SmsGateway.exception.BusinessException;
 import TNB.SmsGateway.exception.message.NoDeviceForCountryOperatorException;
 import TNB.SmsGateway.repository.DeviceRepository;
@@ -61,14 +58,27 @@ public class MessageRouterService {
      * @return Device disponible
      * @throws NoDeviceForCountryOperatorException Si aucun device
      */
-    public Device findAvailableDevice(UUID userId, String countryCode, String operatorCode) {
-        List<Device> devices = deviceRepository.findAvailableDevices(userId, countryCode, operatorCode);
+    public Device findAvailableDevice(UUID userId, RoutingMode routingMode,
+                                      String countryCode, String operatorCode) {
+
+        List<Device> devices;
+
+        if (routingMode == RoutingMode.MANAGED_POOL) {
+            devices = deviceRepository.findAvailablePoolDevices(countryCode, operatorCode);
+
+            // ✅ Secours : si aucun device POOL pur n'est disponible, on retente sur
+            // les devices PERSONAL explicitement ouverts au pool par leur propriétaire (opt-in admin)
+            if (devices.isEmpty()) {
+                devices = deviceRepository.findAvailablePersonalFallbackDevices(countryCode, operatorCode);
+            }
+        } else {
+            devices = deviceRepository.findAvailableDevices(userId, countryCode, operatorCode);
+        }
 
         if (devices.isEmpty()) {
             throw new NoDeviceForCountryOperatorException(countryCode, operatorCode);
         }
 
-        // Retourner le device le moins utilisé
         return devices.get(0);
     }
 
@@ -143,6 +153,7 @@ public class MessageRouterService {
         try {
             Device newDevice = findAvailableDevice(
                     message.getUser().getId(),
+                    message.getRoutingMode(),
                     message.getCountryCode(),
                     message.getOperatorCode()
             );
@@ -188,4 +199,6 @@ public class MessageRouterService {
     public List<Message> findMessagesToReassign(UUID deviceId) {
         return messageRepository.findDispatchMessagesByDevice(deviceId);
     }
+
+
 }

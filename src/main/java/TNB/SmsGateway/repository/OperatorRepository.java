@@ -14,43 +14,35 @@ import java.util.UUID;
 public interface OperatorRepository extends JpaRepository<Operator, UUID> {
 
     /**
-     * Trouver un opérateur par son code
+     * ⚠️ Dangereux depuis la migration vers des codes génériques (ORANGE, MTN...) :
+     * le même code existe désormais dans plusieurs pays, donc cette méthode peut
+     * lever NonUniqueResultException. Préférer findByCodeAndCountryCode.
      */
+    @Deprecated
     Optional<Operator> findByCode(String code);
 
-    /**
-     * Trouver tous les opérateurs d'un pays
-     */
     List<Operator> findByCountryCode(String countryCode);
 
-    /**
-     * Trouver tous les opérateurs d'un pays avec leur pays
-     */
     @Query("SELECT o FROM Operator o JOIN FETCH o.country WHERE o.country.code = :countryCode")
     List<Operator> findByCountryCodeWithCountry(@Param("countryCode") String countryCode);
 
-    /**
-     * Vérifier si un opérateur appartient à un pays
-     */
     @Query("SELECT COUNT(o) > 0 FROM Operator o WHERE o.code = :operatorCode AND o.country.code = :countryCode")
     boolean existsByCodeAndCountryCode(@Param("operatorCode") String operatorCode,
                                        @Param("countryCode") String countryCode);
 
     /**
-     * Trouver un opérateur avec son pays
+     * 🔥 Nouvelle méthode : résolution non-ambiguë d'un opérateur, code + pays.
      */
+    @Query("SELECT o FROM Operator o JOIN FETCH o.country WHERE o.code = :code AND o.country.code = :countryCode")
+    Optional<Operator> findByCodeAndCountryCode(@Param("code") String code,
+                                                @Param("countryCode") String countryCode);
+
     @Query("SELECT o FROM Operator o JOIN FETCH o.country WHERE o.code = :code")
     Optional<Operator> findByCodeWithCountry(@Param("code") String code);
 
-    /**
-     * Trouver tous les opérateurs d'un pays (triés par nom)
-     */
     @Query("SELECT o FROM Operator o WHERE o.country.code = :countryCode ORDER BY o.displayName")
     List<Operator> findByCountryCodeOrderByDisplayName(@Param("countryCode") String countryCode);
 
-    /**
-     * Compter les opérateurs par pays
-     */
     @Query("SELECT o.country.code, COUNT(o) FROM Operator o GROUP BY o.country.code")
     List<Object[]> countOperatorsByCountry();
 }

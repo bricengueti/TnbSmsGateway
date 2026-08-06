@@ -23,8 +23,8 @@ public record DeviceSimResponse(
         Boolean isActive,
 
         @Schema(description = "SMS envoyés aujourd'hui", example = "42")
-        Integer dailySmsSent,
+        Integer dailySmsSent,   // 🔥 corrigé : String → Integer
 
-        @Schema(description = "Quota quotidien", example = "100")
-        Integer dailySmsQuota
+        @Schema(description = "Quota quotidien (nombre ou \"ILLIMITE\")", example = "100")
+        String dailySmsQuota
 ) {}

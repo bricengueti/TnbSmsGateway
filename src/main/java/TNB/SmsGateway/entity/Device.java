@@ -2,12 +2,8 @@ package TNB.SmsGateway.entity;
 
 import jakarta.persistence.*;
 import java.time.Instant;
-import jakarta.persistence.*;
-
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Entity
 @Table(name = "devices")
@@ -29,23 +25,40 @@ public class Device extends BaseAudit {
     @Column(name = "secret_token_hash")
     private String secretTokenHash;
 
-    @Column(name = "pairing_code")
-    private String pairingCode;
-
-    @Column(name = "pairing_code_expires_at")
-    private Instant pairingCodeExpiresAt;
-
     @Column(name = "paired_at")
     private Instant pairedAt;
 
     @Column(name = "last_heartbeat_at")
     private Instant lastHeartbeatAt;
 
-    // ===== RELATION AVEC DeviceSim =====
+    @Column(name = "revoked_at")
+    private Instant revokedAt;
+
     @OneToMany(mappedBy = "device", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<DeviceSim> sims = new ArrayList<>();
 
-    // ===== CONSTRUCTEURS =====
+    // ✅ Cadence par défaut du téléphone (utilisée si aucune SIM
+    // individuelle ne surcharge ces valeurs)
+    @Column(name = "dispatch_min_delay_sec", nullable = false)
+    private Integer dispatchMinDelaySec = 3;
+
+    @Column(name = "dispatch_max_delay_sec", nullable = false)
+    private Integer dispatchMaxDelaySec = 15;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "device_type")
+    private DeviceType type = DeviceType.PERSONAL;
+
+    public DeviceType getType() {
+        return type != null ? type : DeviceType.PERSONAL;   // défensif, cf. remarque ddl-auto=update
+    }
+    public void setType(DeviceType type) { this.type = type; }
+    @Column(name = "available_for_pool", nullable = false)
+    private boolean availableForPool = false;
+
+    public boolean isAvailableForPool() { return availableForPool; }
+    public void setAvailableForPool(boolean availableForPool) { this.availableForPool = availableForPool; }
+
 
     public Device() {
         super();
@@ -57,8 +70,6 @@ public class Device extends BaseAudit {
         this.country = country;
         this.label = label;
     }
-
-    // ===== GETTERS & SETTERS =====
 
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
@@ -75,31 +86,35 @@ public class Device extends BaseAudit {
     public String getSecretTokenHash() { return secretTokenHash; }
     public void setSecretTokenHash(String secretTokenHash) { this.secretTokenHash = secretTokenHash; }
 
-    public String getPairingCode() { return pairingCode; }
-    public void setPairingCode(String pairingCode) { this.pairingCode = pairingCode; }
-
-    public Instant getPairingCodeExpiresAt() { return pairingCodeExpiresAt; }
-    public void setPairingCodeExpiresAt(Instant pairingCodeExpiresAt) { this.pairingCodeExpiresAt = pairingCodeExpiresAt; }
-
     public Instant getPairedAt() { return pairedAt; }
     public void setPairedAt(Instant pairedAt) { this.pairedAt = pairedAt; }
 
     public Instant getLastHeartbeatAt() { return lastHeartbeatAt; }
     public void setLastHeartbeatAt(Instant lastHeartbeatAt) { this.lastHeartbeatAt = lastHeartbeatAt; }
 
+    public Instant getRevokedAt() { return revokedAt; }
+    public void setRevokedAt(Instant revokedAt) { this.revokedAt = revokedAt; }
+
     public List<DeviceSim> getSims() { return sims; }
     public void setSims(List<DeviceSim> sims) { this.sims = sims; }
 
-    // ===== MÉTHODES UTILITAIRES =====
+    public Integer getDispatchMinDelaySec() { return dispatchMinDelaySec; }
+    public void setDispatchMinDelaySec(Integer dispatchMinDelaySec) { this.dispatchMinDelaySec = dispatchMinDelaySec; }
 
-    public boolean isPairingCodeValid() {
-        return pairingCode != null &&
-                pairingCodeExpiresAt != null &&
-                Instant.now().isBefore(pairingCodeExpiresAt);
-    }
+    public Integer getDispatchMaxDelaySec() { return dispatchMaxDelaySec; }
+    public void setDispatchMaxDelaySec(Integer dispatchMaxDelaySec) { this.dispatchMaxDelaySec = dispatchMaxDelaySec; }
 
     public boolean isOnline() {
-        return DeviceStatus.ONLINE.equals(status);
+        return DeviceStatus.ONLINE.equals(status) && !isRevoked();
+    }
+
+    public boolean isRevoked() {
+        return revokedAt != null;
+    }
+
+    public void revoke() {
+        this.revokedAt = Instant.now();
+        this.status = DeviceStatus.DISABLED;
     }
 
     public void addSim(DeviceSim sim) {

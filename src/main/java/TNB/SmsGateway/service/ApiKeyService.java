@@ -4,6 +4,7 @@ import TNB.SmsGateway.dto.request.ApiKeyRequest;
 import TNB.SmsGateway.dto.response.ApiKeyResponse;
 import TNB.SmsGateway.entity.ApiKey;
 import TNB.SmsGateway.entity.ApiKeyScope;
+import TNB.SmsGateway.entity.RoutingMode;
 import TNB.SmsGateway.entity.User;
 import TNB.SmsGateway.exception.BusinessException;
 import TNB.SmsGateway.repository.ApiKeyRepository;
@@ -79,7 +80,9 @@ public class ApiKeyService {
         apiKey.setKeyHash(hashedKey);
         apiKey.setKeyPrefix(prefix);
         apiKey.setScope(ApiKeyScope.valueOf(request.scope()));
+        apiKey.setScope(ApiKeyScope.valueOf(request.scope()));
         apiKey.setLabel(request.label());
+        apiKey.setRoutingMode(parseRoutingMode(request.routingMode()));   // ✅ ajouté
 
         ApiKey saved = apiKeyRepository.save(apiKey);
 
@@ -193,5 +196,18 @@ public class ApiKeyService {
         }
 
         return false;
+    }
+    private RoutingMode parseRoutingMode(String value) {
+        if (value == null || value.isBlank()) {
+            return RoutingMode.OWN_DEVICES;
+        }
+        try {
+            return RoutingMode.valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(
+                    "routingMode invalide: '" + value + "'. Valeurs acceptées: OWN_DEVICES, MANAGED_POOL",
+                    "INVALID_ROUTING_MODE", 400
+            );
+        }
     }
 }

@@ -25,6 +25,13 @@ public class ApiKey extends BaseAudit {
     @Column(name = "revoked_at")
     private Instant revokedAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "routing_mode", nullable = false)
+    private RoutingMode routingMode = RoutingMode.OWN_DEVICES;
+
+    public RoutingMode getRoutingMode() { return routingMode; }
+    public void setRoutingMode(RoutingMode routingMode) { this.routingMode = routingMode; }
+
     public ApiKey() {
         super();
     }

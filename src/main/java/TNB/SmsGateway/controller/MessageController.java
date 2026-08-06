@@ -3,8 +3,12 @@ package TNB.SmsGateway.controller;
 import TNB.SmsGateway.dto.request.SendBulkMessageRequest;
 import TNB.SmsGateway.dto.request.SendMessageRequest;
 import TNB.SmsGateway.dto.response.MessageResponse;
+import TNB.SmsGateway.dto.response.MessageStatsResponse;
 import TNB.SmsGateway.dto.common.PageResponse;
 import TNB.SmsGateway.entity.Message;
+import TNB.SmsGateway.entity.RoutingMode;
+import TNB.SmsGateway.security.ApiKeyPrincipal;
+import TNB.SmsGateway.security.RoutingContext;
 import TNB.SmsGateway.security.UserPrincipal;
 import TNB.SmsGateway.service.MessageService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -51,9 +55,8 @@ public class MessageController {
             @Valid @RequestBody SendMessageRequest request,
             Authentication authentication
     ) {
-        // 🔥 Récupérer l'ID correctement
-        UUID userId = getUserIdFromAuthentication(authentication);
-        MessageResponse response = messageService.sendMessage(userId, request);
+        RoutingContext ctx = getRoutingContext(authentication);
+        MessageResponse response = messageService.sendMessage(ctx, request);
         return ResponseEntity.accepted().body(response);
     }
 
@@ -62,22 +65,65 @@ public class MessageController {
             @Valid @RequestBody SendBulkMessageRequest request,
             Authentication authentication
     ) {
-        UUID userId = getUserIdFromAuthentication(authentication);
+        RoutingContext ctx = getRoutingContext(authentication);
         List<MessageResponse> responses = request.messages().stream()
                 .map(item -> {
                     SendMessageRequest singleRequest = new SendMessageRequest(
-                            item.to(),
-                            item.body(),
-                            item.countryCode(),
-                            item.operator(),
-                            "NORMAL",
-                            null
+                            item.to(), item.body(), item.countryCode(), item.operator(), "NORMAL", null
                     );
-                    return messageService.sendMessage(userId, singleRequest);
+                    return messageService.sendMessage(ctx, singleRequest);
                 })
                 .collect(Collectors.toList());
 
         return ResponseEntity.accepted().body(responses);
+    }
+
+    // 🔥 MÉTHODE UTILITAIRE POUR EXTRAIRE LE CONTEXTE DE ROUTAGE (envoi de SMS)
+    private RoutingContext getRoutingContext(Authentication authentication) {
+        Object principal = authentication.getPrincipal();
+
+        if (principal instanceof ApiKeyPrincipal akp) {
+            return new RoutingContext(akp.getUserId(), akp.getApiKeyId(), akp.getRoutingMode());
+        }
+        if (principal instanceof UserPrincipal up) {
+            // Accès dashboard/JWT → pas de clé API, comportement BYOD par défaut
+            return new RoutingContext(up.getId(), null, RoutingMode.OWN_DEVICES);
+        }
+
+        throw new RuntimeException("Impossible d'extraire le contexte de routage");
+    }
+
+    // 🔥 MÉTHODE UTILITAIRE POUR EXTRAIRE L'ID (inchangée, utilisée par stats/get/list)
+    private UUID getUserIdFromAuthentication(Authentication authentication) {
+        Object principal = authentication.getPrincipal();
+
+        if (principal instanceof UserPrincipal) {
+            return ((UserPrincipal) principal).getId();
+        }
+        if (principal instanceof ApiKeyPrincipal akp) {
+            return akp.getUserId();
+        }
+        if (principal instanceof UUID) {
+            return (UUID) principal;
+        }
+
+        throw new RuntimeException("Impossible d'extraire l'ID utilisateur");
+    }
+
+    /**
+     * Statistiques agrégées pour le Dashboard (mobile).
+     * Placé AVANT /{id} : même si Spring MVC priorise déjà les segments
+     * statiques sur les variables de chemin, on le garde explicite pour
+     * éviter toute ambiguïté de lecture/maintenance future.
+     */
+    @Operation(
+            summary = "Statistiques des messages",
+            description = "Retourne les totaux envoyés/reçus/échoués/livrés ainsi que les compteurs du jour."
+    )
+    @GetMapping("/stats")
+    public ResponseEntity<MessageStatsResponse> getMessageStats(Authentication authentication) {
+        UUID userId = getUserIdFromAuthentication(authentication);
+        return ResponseEntity.ok(messageService.getMessageStats(userId));
     }
 
     @GetMapping("/{id}")
@@ -94,10 +140,14 @@ public class MessageController {
     public ResponseEntity<PageResponse<MessageResponse>> listMessages(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String direction,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String search,
             Authentication authentication
     ) {
         UUID userId = getUserIdFromAuthentication(authentication);
-        Page<Message> messagePage = messageService.getMessagesByUser(userId, page, size);
+        Page<Message> messagePage = messageService.searchMessagesByUser(
+                userId, page, size, direction, status, search);
 
         List<MessageResponse> data = messagePage.getContent().stream()
                 .map(this::toMessageResponse)
@@ -115,20 +165,6 @@ public class MessageController {
         return ResponseEntity.ok(response);
     }
 
-    // 🔥 MÉTHODE UTILITAIRE POUR EXTRAIRE L'ID
-    private UUID getUserIdFromAuthentication(Authentication authentication) {
-        Object principal = authentication.getPrincipal();
-
-        if (principal instanceof UserPrincipal) {
-            return ((UserPrincipal) principal).getId();
-        }
-
-        if (principal instanceof UUID) {
-            return (UUID) principal;
-        }
-
-        throw new RuntimeException("Impossible d'extraire l'ID utilisateur");
-    }
 
     private MessageResponse toMessageResponse(Message message) {
         return new MessageResponse(
@@ -140,6 +176,7 @@ public class MessageController {
                 message.getCountryCode(),
                 message.getOperatorCode(),
                 message.getStatus().name(),
+                message.getRoutingMode().name(),   // ✅ ajouté
                 message.getAttempts(),
                 message.getErrorReason(),
                 message.getDevice() != null ? message.getDevice().getId().toString() : null,

@@ -1,0 +1,146 @@
+name: CI/CD Pipeline - TnbSmsGateway Backend
+
+# Déclenchement : chaque branche pousse sur un environnement dédié.
+# develop -> dev | preprod -> preprod | main -> prod
+on:
+  push:
+    branches:
+      - develop
+      - preprod
+      - main
+
+jobs:
+
+  # ============================================================
+  # JOB 1 — Mappe la branche poussée vers l'environnement GitHub
+  # et vers le nom de dossier utilisé sur le serveur
+  # ============================================================
+  set-env:
+    runs-on: ubuntu-latest
+    outputs:
+      gh_environment: ${{ steps.map.outputs.gh_environment }}
+    steps:
+      - id: map
+        run: |
+          case "${{ github.ref_name }}" in
+            develop) echo "gh_environment=development" >> "$GITHUB_OUTPUT" ;;
+            preprod) echo "gh_environment=preprod" >> "$GITHUB_OUTPUT" ;;
+            main)    echo "gh_environment=production" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+  # ============================================================
+  # JOB 2 — Build l'image Docker et la pousse sur Docker Hub
+  # ============================================================
+  build-and-push:
+    needs: set-env
+    runs-on: ubuntu-latest
+    environment: ${{ needs.set-env.outputs.gh_environment }}
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Configuration de Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Connexion à Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build et Push de l'image Docker
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/tnb-sms-gateway:${{ secrets.IMAGE_TAG }}
+
+  # ============================================================
+  # JOB 3 — Déploie sur le serveur via SSH, dans un dossier
+  # dédié à l'environnement (isolation totale dev/preprod/prod)
+  # ============================================================
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [set-env, build-and-push]
+    environment: ${{ needs.set-env.outputs.gh_environment }}
+    concurrency:
+      group: deploy-${{ needs.set-env.outputs.gh_environment }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Debug clé SSH (sans fuite du contenu)
+        run: |
+          echo "Longueur du secret (en octets) :"
+          echo -n "${{ secrets.SERVER_SSH_KEY }}" | wc -c
+          echo "Empreinte SHA256 du secret :"
+          echo -n "${{ secrets.SERVER_SSH_KEY }}" | sha256sum
+          echo "Première ligne (doit être -----BEGIN...) :"
+          echo "${{ secrets.SERVER_SSH_KEY }}" | head -n 1
+          echo "Dernière ligne (doit être -----END...) :"
+          echo "${{ secrets.SERVER_SSH_KEY }}" | tail -n 1
+          echo "Valeur de SERVER_HOST :"
+          echo "${{ secrets.SERVER_HOST }}"
+          echo "Valeur de SERVER_USER :"
+          echo "${{ secrets.SERVER_USER }}"
+
+      - name: Copie du docker-compose.yml sur le serveur
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "docker-compose.yml"
+          target: "/home/ubuntu/tnb-switch/${{ needs.set-env.outputs.gh_environment }}/"
+
+      - name: Déploiement automatique sur le serveur via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            mkdir -p /home/ubuntu/tnb-switch/${{ needs.set-env.outputs.gh_environment }}/logs
+            cd /home/ubuntu/tnb-switch/${{ needs.set-env.outputs.gh_environment }}
+
+            cat > .env <<EOF
+            CONTAINER_NAME=${{ secrets.CONTAINER_NAME }}
+            IMAGE_TAG=${{ secrets.IMAGE_TAG }}
+            SPRING_PROFILES_ACTIVE=${{ secrets.SPRING_PROFILES_ACTIVE }}
+            SERVER_PORT=${{ secrets.SERVER_PORT }}
+            DB_HOST=${{ secrets.DB_HOST }}
+            DB_PORT=${{ secrets.DB_PORT }}
+            DB_NAME=${{ secrets.DB_NAME }}
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            MAIL_HOST=${{ secrets.MAIL_HOST }}
+            MAIL_PORT=${{ secrets.MAIL_PORT }}
+            MAIL_USERNAME=${{ secrets.MAIL_USERNAME }}
+            MAIL_PASSWORD=${{ secrets.MAIL_PASSWORD }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            JWT_EXPIRATION_MS=${{ secrets.JWT_EXPIRATION_MS }}
+            EOF
+            chmod 600 .env
+
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/tnb-sms-gateway:${{ secrets.IMAGE_TAG }}
+            docker compose --env-file .env up -d --remove-orphans
+            docker image prune -f
+
+      - name: Vérification du déploiement (healthcheck)
+        run: |
+          for i in $(seq 1 20); do
+            if curl -sf http://${{ secrets.SERVER_HOST }}:${{ secrets.SERVER_PORT }}/api/actuator/health; then
+              echo "✅ Application prête"
+              exit 0
+            fi
+            echo "Tentative $i/20 — application pas encore prête, nouvel essai dans 10s..."
+            sleep 10
+          done
+          echo "❌ L'application n'a jamais répondu après 200s"
+          exit 1

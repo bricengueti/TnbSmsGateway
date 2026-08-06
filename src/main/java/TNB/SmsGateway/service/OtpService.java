@@ -79,7 +79,7 @@ public class OtpService {
         log.info("🔐 OTP pour {} : {}", email, otpCode);
         log.info("========================================");
         // 4. Envoyer l'email
-//        sendOtpEmail(email, otpCode);
+        sendOtpEmail(email, otpCode);
     }
 
     /**
@@ -91,7 +91,6 @@ public class OtpService {
         message.setSubject("Votre code OTP TNB SMS Gateway");
         message.setText(String.format("""
                 Bonjour,
-                
                 Votre code OTP est : %s
                 
                 Ce code est valable 5 minutes.

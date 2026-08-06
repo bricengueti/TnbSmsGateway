@@ -25,12 +25,9 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(ApiKeyAuthenticationFilter.class);
     private final ApiKeyRepository apiKeyRepository;
-    private final CustomUserDetailsService userDetailsService;
 
-    public ApiKeyAuthenticationFilter(ApiKeyRepository apiKeyRepository,
-                                      CustomUserDetailsService userDetailsService) {
+    public ApiKeyAuthenticationFilter(ApiKeyRepository apiKeyRepository) {
         this.apiKeyRepository = apiKeyRepository;
-        this.userDetailsService = userDetailsService;
     }
 
     @Override
@@ -94,13 +91,13 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
                         return;
                     }
 
-                    UserDetails userDetails = userDetailsService.loadUserById(foundApiKey.getUser().getId());
+                    ApiKeyPrincipal principal = new ApiKeyPrincipal(foundApiKey);
 
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(
-                                    userDetails,
+                                    principal,
                                     null,
-                                    userDetails.getAuthorities()
+                                    principal.getAuthorities()
                             );
 
                     SecurityContextHolder.getContext().setAuthentication(authentication);

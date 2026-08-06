@@ -14,5 +14,11 @@ public record ApiKeyRequest(
                 allowableValues = {"FULL", "SEND_ONLY", "READ_ONLY"},
                 example = "SEND_ONLY")
         @NotNull(message = "Le scope est obligatoire")
-        String scope
+        String scope,
+
+        @Schema(description = "Mode de routage. OWN_DEVICES (défaut si non renseigné) = utilise vos " +
+                "propres devices. MANAGED_POOL = utilise le pool partagé (un admin devra ensuite vous " +
+                "assigner un pack via /admin/api-keys/{id}/assign-plan, sinon la clé est bloquée par défaut).",
+                allowableValues = {"OWN_DEVICES", "MANAGED_POOL"}, example = "OWN_DEVICES")
+        String routingMode
 ) {}

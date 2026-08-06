@@ -30,6 +30,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
      * Trouver tous les utilisateurs actifs
      */
     List<User> findByStatus(UserStatus status);
+    long countByIsAdminTrue();
 
     /**
      * Trouver tous les utilisateurs avec webhook configuré

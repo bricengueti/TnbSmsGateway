@@ -1,6 +1,7 @@
 package TNB.SmsGateway.config;
 
 import TNB.SmsGateway.security.ApiKeyAuthenticationFilter;
+import TNB.SmsGateway.security.DeviceAuthenticationFilter;
 import TNB.SmsGateway.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,11 +20,14 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final ApiKeyAuthenticationFilter apiKeyAuthFilter;
+    private final DeviceAuthenticationFilter deviceAuthFilter;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter,
-                          ApiKeyAuthenticationFilter apiKeyAuthFilter) {
+                          ApiKeyAuthenticationFilter apiKeyAuthFilter,
+                          DeviceAuthenticationFilter deviceAuthFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.apiKeyAuthFilter = apiKeyAuthFilter;
+        this.deviceAuthFilter = deviceAuthFilter;
     }
 
     @Bean
@@ -36,14 +40,21 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/v1/auth/**",
                                 "/v1/devices/pair",
+                                // ✅ Cadence d'envoi : appelée directement par l'app mobile,
+                                // qui n'a pas de JWT utilisateur (seulement deviceId/secretToken
+                                // pour le WebSocket). Le userId est retrouvé côté service via
+                                // device.getUser().getId(), pas besoin d'authentification ici.
+                                "/v1/devices/*/pacing",
+                                "/v1/webhook/payment/**",
+                                "/v1/devices/*/sims/*/pacing",
                                 "/v1/health",
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html",
                                 "/webjars/**",
-                                "/actuator/health"
+                                "/actuator/health",
+                                "/ws/**"
                         ).permitAll()
-
                         // ===== JWT - Dashboard =====
                         .requestMatchers(
                                 "/v1/webhook/**",
@@ -59,10 +70,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/v1/messages/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/v1/coverage").authenticated()
 
+                        // ===== ADMIN =====
+                        .requestMatchers("/admin/**").hasRole("ADMIN")   // ✅ ajouté
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(apiKeyAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(apiKeyAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(deviceAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
