@@ -91,7 +91,6 @@ public class OtpService {
         message.setSubject("Votre code OTP TNB SMS Gateway");
         message.setText(String.format("""
                 Bonjour,
-                
                 Votre code OTP est : %s
                 
                 Ce code est valable 5 minutes.
