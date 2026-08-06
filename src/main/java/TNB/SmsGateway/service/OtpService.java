@@ -79,7 +79,7 @@ public class OtpService {
         log.info("🔐 OTP pour {} : {}", email, otpCode);
         log.info("========================================");
         // 4. Envoyer l'email
-//        sendOtpEmail(email, otpCode);
+        sendOtpEmail(email, otpCode);
     }
 
     /**
