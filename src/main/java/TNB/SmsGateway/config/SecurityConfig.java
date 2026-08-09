@@ -99,15 +99,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        List<String> origins = Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .toList();
-        configuration.setAllowedOrigins(origins);
+        configuration.addAllowedOriginPattern("*"); // autorise toutes les origines
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Signature"));
-        configuration.setAllowCredentials(false); // pas de cookies, uniquement Bearer token
-        configuration.setMaxAge(3600L); // cache du preflight 1h
+        configuration.setAllowCredentials(false); // pas de cookies, uniquement Bearer
+        configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
