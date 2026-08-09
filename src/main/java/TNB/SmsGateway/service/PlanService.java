@@ -47,7 +47,7 @@ public class PlanService {
     @Transactional
     public void deactivatePlan(UUID planId) {
         Plan plan = findByIdOrThrow(planId);
-        plan.setActive(false);
+        plan.setActive(!plan.isActive());
         planRepository.save(plan);
     }
 
