@@ -29,8 +29,6 @@ public class SecurityConfig {
     private final ApiKeyAuthenticationFilter apiKeyAuthFilter;
     private final DeviceAuthenticationFilter deviceAuthFilter;
 
-    @Value("${cors.allowed-origins}")
-    private String allowedOrigins;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter,
                           ApiKeyAuthenticationFilter apiKeyAuthFilter,
