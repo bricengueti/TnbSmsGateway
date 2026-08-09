@@ -53,12 +53,12 @@ public class AdminController {
         return ResponseEntity.ok(planService.listAllPlans());
     }
 
-    @Operation(summary = "Désactiver un pack", description = "Retire le pack de la vente. Les " +
+    @Operation(summary = "Désactiver et activer  un pack", description = "Retire le pack de la vente. Les " +
             "utilisateurs qui l'ont déjà reçu conservent leur solde/plafond inchangé.")
     @PostMapping("/plans/{id}/deactivate")
     public ResponseEntity<ApiResponse> deactivatePlan(@PathVariable UUID id) {
         planService.deactivatePlan(id);
-        return ResponseEntity.ok(new ApiResponse("Pack désactivé", true));
+        return ResponseEntity.ok(new ApiResponse("Pack désactivé ou desactivé", true));
     }
 
     // ===== QUOTAS =====
