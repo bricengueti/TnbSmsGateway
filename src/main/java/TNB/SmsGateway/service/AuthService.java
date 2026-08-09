@@ -124,8 +124,9 @@ public class AuthService {
         // 4. Générer les tokens
         String accessToken = jwtUtils.generateAccessToken(user.getId(), user.getEmail());
         String refreshToken = jwtUtils.generateRefreshToken(user.getId(), user.getEmail());
+        boolean isAdmin = user.isAdmin();
 
-        return new AuthResponse(accessToken, refreshToken, isNewAccount);
+        return new AuthResponse(accessToken, refreshToken, isNewAccount,isAdmin);
     }
 
     /**

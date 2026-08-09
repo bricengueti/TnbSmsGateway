@@ -15,6 +15,8 @@ public record AuthResponse(
 
 
         @Schema(description = "Indique si le compte vient d'être créé", example = "false")
-        boolean isNewAccount
+        boolean isNewAccount,
+
+         boolean isAdmin
 ) {}
 

@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/v1/messages")
+@SecurityRequirement(name = "BearerAuth")
 @SecurityRequirement(name = "ApiKeyAuth")
 @Tag(name = "Messages", description = "Gestion des SMS (envoi et consultation)")
 public class MessageController {
