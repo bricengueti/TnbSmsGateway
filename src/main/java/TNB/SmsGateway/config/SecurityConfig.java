@@ -35,8 +35,8 @@ public class SecurityConfig {
     // sont implicitement en jeu et "*" est de toute façon rejeté par les
     // navigateurs dès qu'un header Authorization personnalisé est présent
     // en preflight.
-    @Value("${cors.allowed-origins}")
-    private String allowedOrigins;
+//    @Value("${cors.allowed-origins}")
+//    private String allowedOrigins;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter,
                           ApiKeyAuthenticationFilter apiKeyAuthFilter,
@@ -108,11 +108,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        List<String> origins = Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .toList();
-        configuration.setAllowedOrigins(origins);
+//        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+//                .map(String::trim)
+//                .filter(s -> !s.isEmpty())
+//                .toList();
+        configuration.addAllowedOriginPattern("*");
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Signature"));
         configuration.setAllowCredentials(false); // Bearer en header, pas de cookies — pas besoin des credentials CORS
