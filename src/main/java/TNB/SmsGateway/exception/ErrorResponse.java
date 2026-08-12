@@ -20,7 +20,6 @@ public class ErrorResponse {
         this.path = builder.path;
         this.validationErrors = builder.validationErrors;
     }
-
     // Getters
     public Instant getTimestamp() { return timestamp; }
     public int getStatus() { return status; }
