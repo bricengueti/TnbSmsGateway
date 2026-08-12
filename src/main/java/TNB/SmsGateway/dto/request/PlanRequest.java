@@ -13,24 +13,29 @@ public record PlanRequest(
         @NotBlank(message = "Le nom du pack est obligatoire")
         String name,
 
-        @Schema(description = "Description courte", example = "5 000 SMS par mois")
+        @Schema(description = "Description courte", example = "10 000 SMS sur 3 mois")
         String description,
 
-        @Schema(description = "Type de pack. POOL = limite mensuelle de SMS pour le pool partagé. " +
+        @Schema(description = "Type de pack. POOL = quota de SMS pour le pool partagé. " +
                 "PERSONAL = plafond de devices pour les clients BYOD.",
                 allowableValues = {"POOL", "PERSONAL"}, example = "POOL")
         @NotNull(message = "Le type de pack est obligatoire")
         String type,
 
-        @Schema(description = "Limite mensuelle de SMS (type=POOL uniquement). Laisser vide pour un " +
-                "pack illimité.", example = "5000")
-        @Positive(message = "La limite doit être positive")
-        Integer monthlySmsLimit,
+        @Schema(description = "Durée de validité du pack en mois (ex: 1, 3, 12)", example = "3")
+        @NotNull(message = "La durée de validité est obligatoire")
+        @Positive(message = "La durée de validité doit être positive")
+        Integer validityMonths,
 
-        @Schema(description = "Nombre maximum de devices autorisés (type=PERSONAL uniquement). " +
-                "Laisser vide pour un pack sans limite de devices.", example = "5")
+        @Schema(description = "Quota total de SMS pour toute la période (type=POOL uniquement, " +
+                "pas de reset mensuel). Laisser vide pour un pack illimité.", example = "10000")
+        @Positive(message = "Le quota SMS doit être positif")
+        Integer quantitySms,
+
+        @Schema(description = "Nombre maximum de devices simultanés autorisés (type=PERSONAL " +
+                "uniquement). Laisser vide pour un pack sans limite de devices.", example = "5")
         @Positive(message = "Le nombre de devices doit être positif")
-        Integer maxDevices,
+        Integer quantityDevices,
 
         @Schema(description = "Prix indicatif du pack (affichage uniquement)", example = "15000")
         BigDecimal price

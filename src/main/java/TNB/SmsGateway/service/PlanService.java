@@ -31,8 +31,16 @@ public class PlanService {
 
         PlanType type = parsePlanType(request.type());
 
-        Plan plan = new Plan(request.name(), request.description(), type,
-                request.monthlySmsLimit(), request.maxDevices(), request.price());
+        // ⚠️ Validation ajoutée — à garder ou retirer selon ta préférence :
+        // empêche un pack POOL d'avoir un quantityDevices, ou un pack
+        // PERSONAL d'avoir un quantitySms, pour éviter des packs
+        // incohérents créés par erreur depuis le dashboard admin.
+        validateQuantityFieldsMatchType(type, request.quantitySms(), request.quantityDevices());
+
+        Plan plan = new Plan(
+                request.name(), request.description(), type, request.validityMonths(),
+                request.quantityDevices(), request.quantitySms(), request.price(), true
+        );
         return toResponse(planRepository.save(plan));
     }
 
@@ -65,10 +73,24 @@ public class PlanService {
         }
     }
 
+    private void validateQuantityFieldsMatchType(PlanType type, Integer quantitySms, Integer quantityDevices) {
+        if (type == PlanType.POOL && quantityDevices != null) {
+            throw new BusinessException(
+                    "quantityDevices n'est pas pertinent pour un pack POOL — utilisez quantitySms.",
+                    "INVALID_PLAN_FIELDS", 400);
+        }
+        if (type == PlanType.PERSONAL && quantitySms != null) {
+            throw new BusinessException(
+                    "quantitySms n'est pas pertinent pour un pack PERSONAL — utilisez quantityDevices.",
+                    "INVALID_PLAN_FIELDS", 400);
+        }
+    }
+
     private PlanResponse toResponse(Plan plan) {
         return new PlanResponse(
                 plan.getId().toString(), plan.getName(), plan.getDescription(),
-                plan.getType().name(), plan.getMonthlySmsLimit(), plan.getMaxDevices(),
+                plan.getType().name(), plan.getValidityMonths(),
+                plan.getQuantitySms(), plan.getQuantityDevices(),
                 plan.getPrice(), plan.isActive()
         );
     }

@@ -12,11 +12,14 @@ public record PlanResponse(
         @Schema(allowableValues = {"POOL", "PERSONAL"})
         String type,
 
-        @Schema(description = "Limite mensuelle de SMS (POOL), null si illimité ou si type=PERSONAL")
-        Integer monthlySmsLimit,
+        @Schema(description = "Durée de validité du pack en mois")
+        Integer validityMonths,
 
-        @Schema(description = "Plafond de devices (PERSONAL), null si illimité ou si type=POOL")
-        Integer maxDevices,
+        @Schema(description = "Quota total de SMS pour la période (POOL), null si illimité ou si type=PERSONAL")
+        Integer quantitySms,
+
+        @Schema(description = "Plafond de devices simultanés (PERSONAL), null si illimité ou si type=POOL")
+        Integer quantityDevices,
 
         BigDecimal price,
         boolean active

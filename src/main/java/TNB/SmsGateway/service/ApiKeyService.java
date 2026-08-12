@@ -1,11 +1,10 @@
 package TNB.SmsGateway.service;
 
 import TNB.SmsGateway.dto.request.ApiKeyRequest;
+import TNB.SmsGateway.dto.response.AdminDeviceResponse;
 import TNB.SmsGateway.dto.response.ApiKeyResponse;
-import TNB.SmsGateway.entity.ApiKey;
-import TNB.SmsGateway.entity.ApiKeyScope;
-import TNB.SmsGateway.entity.RoutingMode;
-import TNB.SmsGateway.entity.User;
+import TNB.SmsGateway.dto.response.DeviceResponse;
+import TNB.SmsGateway.entity.*;
 import TNB.SmsGateway.exception.BusinessException;
 import TNB.SmsGateway.repository.ApiKeyRepository;
 import TNB.SmsGateway.utils.ApiKeyUtils;
@@ -41,10 +40,15 @@ public class ApiKeyService {
 
     private final ApiKeyRepository apiKeyRepository;
     private final UserService userService;
+    private final DeviceService deviceService;
+    private final AdminPlatformService adminPlatformService;
 
-    public ApiKeyService(ApiKeyRepository apiKeyRepository, UserService userService) {
+
+    public ApiKeyService(ApiKeyRepository apiKeyRepository, UserService userService, DeviceService deviceService, AdminPlatformService adminPlatformService) {
         this.apiKeyRepository = apiKeyRepository;
         this.userService = userService;
+        this.deviceService = deviceService;
+        this.adminPlatformService = adminPlatformService;
     }
 
     /**
@@ -83,12 +87,28 @@ public class ApiKeyService {
         apiKey.setScope(ApiKeyScope.valueOf(request.scope()));
         apiKey.setLabel(request.label());
         apiKey.setRoutingMode(parseRoutingMode(request.routingMode()));   // ✅ ajouté
+        if (request.routingMode()==RoutingMode.OWN_DEVICES.toString()){
+            List<DeviceResponse> devices = deviceService.listDevices(userId);
+
+            if (devices == null || devices.isEmpty()) {
+                throw new IllegalStateException("Aucun device trouvé pour l'utilisateur. Veuillez enregistrer un device avant de continuer.");
+            }
+
+        }
+        if (request.routingMode()==RoutingMode.MANAGED_POOL.toString()){
+            List<AdminDeviceResponse> devices = adminPlatformService.listDevices(DeviceType.POOL,DeviceStatus.ONLINE);
+
+            if (devices == null || devices.isEmpty()) {
+                throw new IllegalStateException(
+                        "Aucun device disponible pour traiter vos messages. Veuillez enregistrer votre propre device avant de continuer ou contacter notre équipe pour assistance."
+                );
+            }
+
+        }
+
+
 
         ApiKey saved = apiKeyRepository.save(apiKey);
-
-        // 🔥 VÉRIFIER QUE L'ID N'EST PAS NULL
-        log.info("✅ Clé API enregistrée avec id: {}", saved.getId());
-        log.info("✅ Hash en base: {}", saved.getKeyHash());
 
         return new ApiKeyResponse(
                 saved.getId().toString(),

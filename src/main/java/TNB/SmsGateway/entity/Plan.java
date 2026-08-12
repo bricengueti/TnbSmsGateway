@@ -16,13 +16,18 @@ public class Plan extends BaseAudit {
     @Column(nullable = false)
     private PlanType type;
 
-    // Pertinent pour type=POOL : limite mensuelle de SMS (null = illimité)
-    @Column(name = "monthly_sms_limit")
-    private Integer monthlySmsLimit;
+    /** Durée de validité du pack en mois (ex: 1, 3, 12). Toujours renseignée. */
+    @Column(name = "validity_months", nullable = false)
+    private Integer validityMonths;
 
-    // Pertinent pour type=PERSONAL : nombre de devices autorisés (null = illimité)
-    @Column(name = "max_devices")
-    private Integer maxDevices;
+    /** Plafond de devices simultanés — pertinent uniquement pour type=PERSONAL. Null = illimité. */
+    @Column(name = "quantity_devices")
+    private Integer quantityDevices;
+
+    /** Quota total de SMS pour toute la période (pas de reset mensuel) —
+     * pertinent uniquement pour type=POOL. Null = illimité. */
+    @Column(name = "quantity_sms")
+    private Integer quantitySms;
 
     @Column(name = "price")
     private BigDecimal price;
@@ -32,15 +37,16 @@ public class Plan extends BaseAudit {
 
     public Plan() { super(); }
 
-    public Plan(String name, String description, PlanType type,
-                Integer monthlySmsLimit, Integer maxDevices, BigDecimal price) {
-        this();
+    public Plan(String name, String description, PlanType type, Integer validityMonths,
+                Integer quantityDevices, Integer quantitySms, BigDecimal price, boolean active) {
         this.name = name;
         this.description = description;
         this.type = type;
-        this.monthlySmsLimit = monthlySmsLimit;
-        this.maxDevices = maxDevices;
+        this.validityMonths = validityMonths;
+        this.quantityDevices = quantityDevices;
+        this.quantitySms = quantitySms;
         this.price = price;
+        this.active = active;
     }
 
     public String getName() { return name; }
@@ -52,18 +58,18 @@ public class Plan extends BaseAudit {
     public PlanType getType() { return type; }
     public void setType(PlanType type) { this.type = type; }
 
-    public Integer getMonthlySmsLimit() { return monthlySmsLimit; }
-    public void setMonthlySmsLimit(Integer monthlySmsLimit) { this.monthlySmsLimit = monthlySmsLimit; }
+    public Integer getValidityMonths() { return validityMonths; }
+    public void setValidityMonths(Integer validityMonths) { this.validityMonths = validityMonths; }
 
-    public Integer getMaxDevices() { return maxDevices; }
-    public void setMaxDevices(Integer maxDevices) { this.maxDevices = maxDevices; }
+    public Integer getQuantityDevices() { return quantityDevices; }
+    public void setQuantityDevices(Integer quantityDevices) { this.quantityDevices = quantityDevices; }
+
+    public Integer getQuantitySms() { return quantitySms; }
+    public void setQuantitySms(Integer quantitySms) { this.quantitySms = quantitySms; }
 
     public BigDecimal getPrice() { return price; }
     public void setPrice(BigDecimal price) { this.price = price; }
 
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
-
-    public boolean isUnlimitedSms() { return monthlySmsLimit == null; }
-    public boolean isUnlimitedDevices() { return maxDevices == null; }
 }

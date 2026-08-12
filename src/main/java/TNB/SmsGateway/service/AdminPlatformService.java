@@ -192,10 +192,12 @@ public class AdminPlatformService {
         return new UserQuotaResponse(
                 quota.getUser().getId().toString(), quota.getUser().getEmail(), quota.getType().name(),
                 quota.getPlan() != null ? quota.getPlan().getName() : null, quota.isUnlimited(),
-                quota.getType() == PlanType.POOL ? quota.getSmsSentThisMonth() : null,
-                quota.getType() == PlanType.POOL ? quota.getMonthlyLimit() : null,
-                quota.getType() == PlanType.PERSONAL ? quota.getMaxDevices() : null,
-                quota.getType() == PlanType.PERSONAL ? deviceRepository.countPersonalDevicesByUserId(quota.getUser().getId()) : null
+                quota.getType() == PlanType.POOL ? quota.getSmsSentInPeriod() : null,
+                quota.getType() == PlanType.POOL ? quota.getSmsQuota() : null,
+                quota.getType() == PlanType.PERSONAL ? quota.getQuantityDevices() : null,
+                quota.getType() == PlanType.PERSONAL ? deviceRepository.countPersonalDevicesByUserId(quota.getUser().getId()) : null,
+                quota.getPeriodEndsAt(),
+                quota.isExpired()
         );
     }
 }

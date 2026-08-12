@@ -36,8 +36,8 @@ public class AdminQuotaService {
     }
 
     /**
-     * SCÉNARIO: Assigner un pack POOL — REMPLACE la limite existante et remet le compteur à zéro
-     * (assignation classique, pas d'addition).
+     * SCÉNARIO: Assigner un pack POOL — REMPLACE le quota existant et démarre
+     * une nouvelle période (validityMonths du pack), compteur consommé à zéro.
      */
     @Transactional
     public UserQuotaResponse assignPoolPlan(UUID userId, UUID planId) {
@@ -50,16 +50,17 @@ public class AdminQuotaService {
 
         UserQuota quota = getOrCreate(user, PlanType.POOL);
         quota.setPlan(plan);
-        quota.setUnlimited(plan.isUnlimitedSms());
-        quota.setMonthlyLimit(plan.getMonthlySmsLimit());
-        quota.setSmsSentThisMonth(0);   // ✅ nouvelle période propre à chaque assignation
+        quota.setUnlimited(plan.getQuantitySms() == null);
+        quota.setSmsQuota(plan.getQuantitySms());
+        quota.startNewPeriod(plan); // ✅ remet le compteur à zéro ET recalcule periodEndsAt
 
         userQuotaRepository.save(quota);
         return toResponse(quota);
     }
 
     /**
-     * SCÉNARIO: Assigner un pack PERSONAL (plafond de devices) — REMPLACE la limite.
+     * SCÉNARIO: Assigner un pack PERSONAL (plafond de devices) — REMPLACE le
+     * plafond et démarre une nouvelle période de validité.
      */
     @Transactional
     public UserQuotaResponse assignPersonalPlan(UUID userId, UUID planId) {
@@ -72,8 +73,9 @@ public class AdminQuotaService {
 
         UserQuota quota = getOrCreate(user, PlanType.PERSONAL);
         quota.setPlan(plan);
-        quota.setUnlimited(plan.isUnlimitedDevices());
-        quota.setMaxDevices(plan.getMaxDevices());
+        quota.setUnlimited(plan.getQuantityDevices() == null);
+        quota.setQuantityDevices(plan.getQuantityDevices());
+        quota.startNewPeriod(plan); // recalcule periodEndsAt (le plafond devices n'a pas de compteur consommé)
 
         userQuotaRepository.save(quota);
         return toResponse(quota);
@@ -85,12 +87,20 @@ public class AdminQuotaService {
         UserQuota quota = getOrCreate(user, type);
 
         if (request.unlimited() != null) quota.setUnlimited(request.unlimited());
-        if (type == PlanType.POOL && request.monthlyLimit() != null) quota.setMonthlyLimit(request.monthlyLimit());
-        if (type == PlanType.PERSONAL && request.maxDevices() != null) quota.setMaxDevices(request.maxDevices());
-        if (Boolean.TRUE.equals(request.resetCounter())) quota.setSmsSentThisMonth(0);
+        if (type == PlanType.POOL && request.smsQuota() != null) quota.setSmsQuota(request.smsQuota());
+        if (type == PlanType.PERSONAL && request.quantityDevices() != null) quota.setQuantityDevices(request.quantityDevices());
+        if (Boolean.TRUE.equals(request.resetCounter())) quota.setSmsSentInPeriod(0);
+        if (request.periodEndsAt() != null) quota.setPeriodEndsAt(request.periodEndsAt());
 
         userQuotaRepository.save(quota);
         return toResponse(quota);
+    }
+
+    /** Réutilisée par MeController (auto-service) — voir getUserQuotaOrNull. */
+    public UserQuotaResponse getUserQuotaOrNull(UUID userId, PlanType type) {
+        return userQuotaRepository.findByUserIdAndType(userId, type)
+                .map(this::toResponse)
+                .orElse(null);
     }
 
     private UserQuota getOrCreate(User user, PlanType type) {
@@ -109,10 +119,12 @@ public class AdminQuotaService {
                 quota.getType().name(),
                 quota.getPlan() != null ? quota.getPlan().getName() : null,
                 quota.isUnlimited(),
-                quota.getType() == PlanType.POOL ? quota.getSmsSentThisMonth() : null,
-                quota.getType() == PlanType.POOL ? quota.getMonthlyLimit() : null,
-                quota.getType() == PlanType.PERSONAL ? quota.getMaxDevices() : null,
-                deviceCount
+                quota.getType() == PlanType.POOL ? quota.getSmsSentInPeriod() : null,
+                quota.getType() == PlanType.POOL ? quota.getSmsQuota() : null,
+                quota.getType() == PlanType.PERSONAL ? quota.getQuantityDevices() : null,
+                deviceCount,
+                quota.getPeriodEndsAt(),
+                quota.isExpired()
         );
     }
 }

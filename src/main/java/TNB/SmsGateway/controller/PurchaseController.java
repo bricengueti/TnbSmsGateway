@@ -1,7 +1,10 @@
 package TNB.SmsGateway.controller;
 
+import TNB.SmsGateway.dto.common.ApiResponse;
+import TNB.SmsGateway.dto.response.PlanResponse;
 import TNB.SmsGateway.payment.PaymentInitiationResult;
 import TNB.SmsGateway.security.UserPrincipal;
+import TNB.SmsGateway.service.PlanService;
 import TNB.SmsGateway.service.PurchaseService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -10,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -19,9 +23,10 @@ import java.util.UUID;
 public class PurchaseController {
 
     private final PurchaseService purchaseService;
-
-    public PurchaseController(PurchaseService purchaseService) {
+    private final PlanService planService;
+    public PurchaseController(PurchaseService purchaseService, PlanService planService) {
         this.purchaseService = purchaseService;
+        this.planService = planService;
     }
 
     @Operation(summary = "Acheter un pack", description = "Initie le paiement pour le pack choisi. " +
@@ -35,4 +40,11 @@ public class PurchaseController {
         UUID userId = ((UserPrincipal) authentication.getPrincipal()).getId();
         return ResponseEntity.ok(purchaseService.initiatePurchase(userId, planId));
     }
+
+    @Operation(summary = "Lister tous les packs")
+    @GetMapping("/plans")
+    public ResponseEntity<List<PlanResponse>> listPlans() {
+        return ResponseEntity.ok(planService.listAllPlans());
+    }
+
 }

@@ -2,6 +2,8 @@ package TNB.SmsGateway.entity;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 
 @Entity
 @Table(name = "user_quotas", uniqueConstraints = {
@@ -24,19 +26,23 @@ public class UserQuota extends BaseAudit {
     @Column(nullable = false)
     private boolean unlimited = false;
 
-    // Pertinent pour type=POOL — limite + compteur remis à zéro chaque mois
-    @Column(name = "monthly_limit")
-    private Integer monthlyLimit;
+    // Pertinent pour type=POOL — quota TOTAL pour toute la période (pas de
+    // reset mensuel : consommé jusqu'à épuisement ou expiration du pack).
+    @Column(name = "sms_quota")
+    private Integer smsQuota;
 
-    @Column(name = "sms_sent_this_month", nullable = false)
-    private Integer smsSentThisMonth = 0;
+    @Column(name = "sms_sent_in_period", nullable = false)
+    private Integer smsSentInPeriod = 0;
 
-    @Column(name = "reset_at")
-    private Instant resetAt;
+    // Pertinent pour type=PERSONAL — nombre de devices autorisés.
+    @Column(name = "quantity_devices")
+    private Integer quantityDevices;
 
-    // Pertinent pour type=PERSONAL — nombre de devices autorisés
-    @Column(name = "max_devices")
-    private Integer maxDevices;
+    // Commun aux deux types — date de fin de validité du pack, calculée à
+    // l'assignation comme (maintenant + plan.validityMonths mois). Après
+    // cette date, le quota est considéré expiré même s'il reste du solde.
+    @Column(name = "period_ends_at")
+    private Instant periodEndsAt;
 
     public UserQuota() { super(); }
 
@@ -58,30 +64,50 @@ public class UserQuota extends BaseAudit {
     public boolean isUnlimited() { return unlimited; }
     public void setUnlimited(boolean unlimited) { this.unlimited = unlimited; }
 
-    public Integer getMonthlyLimit() { return monthlyLimit; }
-    public void setMonthlyLimit(Integer monthlyLimit) { this.monthlyLimit = monthlyLimit; }
+    public Integer getSmsQuota() { return smsQuota; }
+    public void setSmsQuota(Integer smsQuota) { this.smsQuota = smsQuota; }
 
-    public Integer getSmsSentThisMonth() { return smsSentThisMonth; }
-    public void setSmsSentThisMonth(Integer smsSentThisMonth) { this.smsSentThisMonth = smsSentThisMonth; }
+    public Integer getSmsSentInPeriod() { return smsSentInPeriod; }
+    public void setSmsSentInPeriod(Integer smsSentInPeriod) { this.smsSentInPeriod = smsSentInPeriod; }
 
-    public Instant getResetAt() { return resetAt; }
-    public void setResetAt(Instant resetAt) { this.resetAt = resetAt; }
+    public Integer getQuantityDevices() { return quantityDevices; }
+    public void setQuantityDevices(Integer quantityDevices) { this.quantityDevices = quantityDevices; }
 
-    public Integer getMaxDevices() { return maxDevices; }
-    public void setMaxDevices(Integer maxDevices) { this.maxDevices = maxDevices; }
+    public Instant getPeriodEndsAt() { return periodEndsAt; }
+    public void setPeriodEndsAt(Instant periodEndsAt) { this.periodEndsAt = periodEndsAt; }
 
+    /** true si le pack est arrivé au bout de sa durée de validité (validityMonths écoulés). */
+    public boolean isExpired() {
+        return periodEndsAt != null && Instant.now().isAfter(periodEndsAt);
+    }
+
+    /**
+     * unlimited=true → toujours OK.
+     * Sinon : il faut à la fois du solde restant ET ne pas être expiré —
+     * un pack expiré bloque l'envoi même s'il reste du solde SMS non
+     * consommé (le solde non utilisé n'est pas reporté après expiration).
+     */
     public boolean hasRemainingQuota() {
         if (unlimited) return true;
-        if (monthlyLimit == null) return false;
-        return smsSentThisMonth < monthlyLimit;
+        if (isExpired()) return false;
+        if (smsQuota == null) return false;
+        return smsSentInPeriod < smsQuota;
     }
 
     public void incrementUsage() {
-        this.smsSentThisMonth = (this.smsSentThisMonth == null ? 0 : this.smsSentThisMonth) + 1;
+        this.smsSentInPeriod = (this.smsSentInPeriod == null ? 0 : this.smsSentInPeriod) + 1;
     }
 
-    public void resetForNewPeriod(Instant nextResetAt) {
-        this.smsSentThisMonth = 0;
-        this.resetAt = nextResetAt;
+    /**
+     * Démarre une nouvelle période à partir d'un pack fraîchement assigné :
+     * réinitialise le compteur consommé et recalcule la date d'expiration
+     * à (maintenant + plan.validityMonths mois calendaires). Remplace
+     * l'ancien resetForNewPeriod() basé sur le changement de mois civil.
+     */
+    public void startNewPeriod(Plan plan) {
+        this.smsSentInPeriod = 0;
+        this.periodEndsAt = plan.getValidityMonths() != null
+                ? ZonedDateTime.now(ZoneOffset.UTC).plusMonths(plan.getValidityMonths()).toInstant()
+                : null;
     }
 }

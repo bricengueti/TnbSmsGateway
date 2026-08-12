@@ -29,6 +29,14 @@ public class SecurityConfig {
     private final ApiKeyAuthenticationFilter apiKeyAuthFilter;
     private final DeviceAuthenticationFilter deviceAuthFilter;
 
+    // Liste blanche d'origines, une par environnement — voir cors.allowed-origins
+    // dans application-{profile}.properties. Ne JAMAIS mettre "*" ici : le
+    // frontend envoie un Authorization: Bearer, donc les credentials CORS
+    // sont implicitement en jeu et "*" est de toute façon rejeté par les
+    // navigateurs dès qu'un header Authorization personnalisé est présent
+    // en preflight.
+    @Value("${cors.allowed-origins}")
+    private String allowedOrigins;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter,
                           ApiKeyAuthenticationFilter apiKeyAuthFilter,
@@ -41,18 +49,18 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // Active CORS avec configuration custom
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                // Désactive CSRF (API stateless)
                 .csrf(csrf -> csrf.disable())
-                // Pas de session côté serveur
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // Définition des règles d’autorisation
                 .authorizeHttpRequests(authz -> authz
                         // ===== PUBLIC =====
                         .requestMatchers(
                                 "/v1/auth/**",
                                 "/v1/devices/pair",
+                                // ✅ Cadence d'envoi : appelée directement par l'app mobile,
+                                // qui n'a pas de JWT utilisateur (seulement deviceId/secretToken
+                                // pour le WebSocket). Le userId est retrouvé côté service via
+                                // device.getUser().getId(), pas besoin d'authentification ici.
                                 "/v1/devices/*/pacing",
                                 "/v1/webhook/payment/**",
                                 "/v1/devices/*/sims/*/pacing",
@@ -72,17 +80,17 @@ public class SecurityConfig {
                                 "/v1/devices/**",
                                 "/v1/reference/**"
                         ).authenticated()
+
                         // ===== API KEY - Integration =====
                         .requestMatchers(HttpMethod.POST, "/v1/messages/send").authenticated()
                         .requestMatchers(HttpMethod.POST, "/v1/messages/send-bulk").authenticated()
                         .requestMatchers(HttpMethod.GET, "/v1/messages/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/v1/coverage").authenticated()
+
                         // ===== ADMIN =====
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
-                        // ===== PAR DÉFAUT =====
+                        .requestMatchers("/admin/**").hasRole("ADMIN")   // ✅ ajouté
                         .anyRequest().authenticated()
                 )
-                // Ajout des filtres custom
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(apiKeyAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(deviceAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -91,17 +99,24 @@ public class SecurityConfig {
     }
 
     /**
-     * Configuration CORS : autorise uniquement les origines définies
-     * dans application-{profile}.properties via cors.allowed-origins
+     * Autorise le frontend Angular (dashboard) à appeler l'API depuis un
+     * navigateur. Sans ce bean, Spring Security n'ajoute AUCUN header
+     * Access-Control-Allow-Origin — même les routes publiques (permitAll)
+     * sont bloquées côté navigateur, car le préflight OPTIONS échoue en
+     * amont de la logique d'autorisation.
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.addAllowedOriginPattern("*"); // autorise toutes les origines
+        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+        configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Signature"));
-        configuration.setAllowCredentials(false); // pas de cookies, uniquement Bearer
-        configuration.setMaxAge(3600L);
+        configuration.setAllowCredentials(false); // Bearer en header, pas de cookies — pas besoin des credentials CORS
+        configuration.setMaxAge(3600L); // met le résultat du preflight en cache côté navigateur 1h
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
