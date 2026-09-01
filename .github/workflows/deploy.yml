@@ -96,7 +96,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           source: "docker-compose.yml"
-          target: "/home/ubuntu/tnb-switch/${{ needs.set-env.outputs.gh_environment }}/"
+          target: "/home/ubuntu/tnb-sms-gateway/${{ needs.set-env.outputs.gh_environment }}/"
 
       - name: Déploiement automatique sur le serveur via SSH
         uses: appleboy/ssh-action@v1.0.3
